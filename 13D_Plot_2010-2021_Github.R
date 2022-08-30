@@ -144,34 +144,35 @@ head(MilliCRSP13D)
 #tab1(MilliCRSP13D$ChosenByHedgeFund, sort.group = "decreasing", cum.percent = TRUE)
 #CLEAN13DHF<-subset(MilliCRSP13DHF, ChosenByHedgeFund=="Yes")
 
-#I need excess return and turnover... to see what Barry, Brav, Jian found.
-#or just see imbalance first.
-colnames(CLEAN13DHF)[11]<-"mrbtrd"
-colnames(CLEAN13DHF)[12]<-"mrbvol"
-colnames(CLEAN13DHF)[13]<-"mrstrd"
-colnames(CLEAN13DHF)[14]<-"mrsvol"
-head(CLEAN13DHF)
-
-#calcualte new mroibtrd and mroibvol
-CLEAN13DHF<-CLEAN13DHF%>%
-  mutate(mroibtrd=(mrbtrd-mrstrd)/(mrbtrd+mrstrd))
-
-CLEAN13DHF<-CLEAN13DHF%>%
-  mutate(mroibvol=(mrbvol-mrsvol)/(mrbvol+mrsvol))
-
-CLEAN13DHF<-CLEAN13DHF[,-c(11,12,13,14)]
-
-CLEAN13DHF2<-CLEAN13DHF[,c(1,2,3,4,7,9,10,14,24,25,26,27)]
+# #I need excess return and turnover... to see what Barry, Brav, Jian found.
+# #or just see imbalance first.
+# colnames(CLEAN13DHF)[11]<-"mrbtrd"
+# colnames(CLEAN13DHF)[12]<-"mrbvol"
+# colnames(CLEAN13DHF)[13]<-"mrstrd"
+# colnames(CLEAN13DHF)[14]<-"mrsvol"
+# head(CLEAN13DHF)
+# 
+# #calcualte new mroibtrd and mroibvol
+# CLEAN13DHF<-CLEAN13DHF%>%
+#   mutate(mroibtrd=(mrbtrd-mrstrd)/(mrbtrd+mrstrd))
+# 
+# CLEAN13DHF<-CLEAN13DHF%>%
+#   mutate(mroibvol=(mrbvol-mrsvol)/(mrbvol+mrsvol))
+# 
+# CLEAN13DHF<-CLEAN13DHF[,-c(11,12,13,14)]
+# 
+# CLEAN13DHF2<-CLEAN13DHF[,c(1,2,3,4,7,9,10,14,24,25,26,27)]
 
 #also calculate excess return
-CLEAN13DHF3<-CLEAN13DHF2%>%
+MilliCRSP13D<-MilliCRSP13D%>%
   mutate(RET=as.numeric(RET))%>%
   mutate(ExcRet=RET-wret)
 
-CLEAN13DHF<-CLEAN13DHF3
-rm(CLEAN13DHF2,CLEAN13DHF3)
+# CLEAN13DHF<-CLEAN13DHF3
+# rm(CLEAN13DHF2,CLEAN13DHF3)
 
-
+#up to here 11:32pm AUG 29 2022
+#figure out way to plot efficienty...
 #######################################try plotting averages############################################
 #####################################################################################################################
 #####################################################################################################################
