@@ -28,6 +28,8 @@ d13<-d13^2
 d13
 #create...
 #last comment!!
+#ok I commited and published
+#i will do this again.
 
 library(data.table)
 getwd()
