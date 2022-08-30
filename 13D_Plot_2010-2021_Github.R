@@ -23,6 +23,11 @@ d13<- d13[1,2]
 d13<-d13[1:10,]
 d13
 #final change
+#multiplechange
+d13<-d13^2
+d13
+#create...
+#last comment!!
 
 library(data.table)
 getwd()
