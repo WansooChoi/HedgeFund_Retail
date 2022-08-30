@@ -19,6 +19,7 @@ library(sandwich)
 library(epiDisplay)
 #library(scales)
 #what happens if I do this?
+d13<- d13[1,2]
 
 library(data.table)
 getwd()
