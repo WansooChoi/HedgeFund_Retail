@@ -18,18 +18,6 @@ require(lmtest)
 library(sandwich)
 library(epiDisplay)
 #library(scales)
-#what happens if I do this?
-d13<- d13[1,2]
-d13<-d13[1:10,]
-d13
-#final change
-#multiplechange
-d13<-d13^2
-d13
-#create...
-#last comment!!
-#ok I commited and published
-#i will do this again.
 
 library(data.table)
 getwd()
