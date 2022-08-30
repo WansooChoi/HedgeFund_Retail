@@ -18,6 +18,7 @@ require(lmtest)
 library(sandwich)
 library(epiDisplay)
 #library(scales)
+#what happens if I do this?
 
 library(data.table)
 getwd()
