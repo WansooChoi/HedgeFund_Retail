@@ -17,6 +17,8 @@ require(foreign)
 require(lmtest)
 library(sandwich)
 library(epiDisplay)
+library(vtable)
+library(skimr)
 #library(scales)
 
 #ok github good to go.
@@ -171,6 +173,11 @@ MilliCRSP13D<-MilliCRSP13D%>%
 # CLEAN13DHF<-CLEAN13DHF3
 # rm(CLEAN13DHF2,CLEAN13DHF3)
 
+#want to know the distribution of excess return
+ExcessReturns<-as.data.table(MilliCRSP13D$ExcRet)
+st(MilliCRSP13D, vars = 'ExcRet')
+summary(MilliCRSP13D$ExcRet)
+ReturnStat<-skim(MilliCRSP13D$ExcRet)
 #up to here 11:32pm AUG 29 2022
 #figure out way to plot efficienty...
 #######################################try plotting averages############################################
