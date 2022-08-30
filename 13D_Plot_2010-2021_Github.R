@@ -19,7 +19,9 @@ library(sandwich)
 library(epiDisplay)
 #library(scales)
 
-#hmmm
+#ok github good to go.
+#I will use github desk top instead of git or git in r because
+#github desktop is easiest at this moment
 
 library(data.table)
 getwd()
