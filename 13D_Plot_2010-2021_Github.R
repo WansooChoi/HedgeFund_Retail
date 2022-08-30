@@ -19,6 +19,8 @@ library(sandwich)
 library(epiDisplay)
 #library(scales)
 
+#hmmm
+
 library(data.table)
 getwd()
 d13<-fread("C:/Users/user/Desktop/WhaleWisdom/13D 2010-2021.csv")
