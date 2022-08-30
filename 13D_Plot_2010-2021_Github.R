@@ -138,14 +138,11 @@ MilliCRSP13D<-left_join(MilliCRSP13D,df,by=c('PERMNO','DATE'))
 #now we have the weighted average market return.
 head(MilliCRSP13D)
 
-#hahaha just testing github repository blah blah blahhhh
-#
-makesomenoise<-c(1,2,3.4)
 
 #left join. add 13D HF list to Millicrsp13D
 #MilliCRSP13D<-left_join(MilliCRSP13D,List13D,by=c('PERMNO','DATE'))
-tab1(MilliCRSP13D$ChosenByHedgeFund, sort.group = "decreasing", cum.percent = TRUE)
-CLEAN13DHF<-subset(MilliCRSP13DHF, ChosenByHedgeFund=="Yes")
+#tab1(MilliCRSP13D$ChosenByHedgeFund, sort.group = "decreasing", cum.percent = TRUE)
+#CLEAN13DHF<-subset(MilliCRSP13DHF, ChosenByHedgeFund=="Yes")
 
 #I need excess return and turnover... to see what Barry, Brav, Jian found.
 #or just see imbalance first.
