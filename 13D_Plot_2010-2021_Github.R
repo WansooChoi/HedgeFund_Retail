@@ -20,6 +20,8 @@ library(epiDisplay)
 #library(scales)
 #what happens if I do this?
 d13<- d13[1,2]
+d13<-d13[1:10,]
+d13
 
 library(data.table)
 getwd()
