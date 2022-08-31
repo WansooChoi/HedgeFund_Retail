@@ -173,13 +173,48 @@ MilliCRSP13D<-MilliCRSP13D%>%
 # CLEAN13DHF<-CLEAN13DHF3
 # rm(CLEAN13DHF2,CLEAN13DHF3)
 
-#want to know the distribution of excess return
+#want to know the statistics of excess return
 ExcessReturns<-as.data.table(MilliCRSP13D$ExcRet)
 st(MilliCRSP13D, vars = 'ExcRet')
-summary(MilliCRSP13D$ExcRet)
-ReturnStat<-skim(MilliCRSP13D$ExcRet)
-#up to here 11:32pm AUG 29 2022
-#figure out way to plot efficienty...
+summary(ExcessReturns)
+ReturnStat<-skim(ExcessReturns)
+
+#also want to know the statistics of size and add new column that indicates large medium small
+threshold<-as.data.frame(quantile(MilliCRSP13D$MarketCap, c(.33, .66, .99)) )
+MilliCRSP13D<-MilliCRSP13D%>%
+  mutate(Size=ifelse(MarketCap < threshold[1,], "Small", ifelse(MarketCap < threshold[2,],"Medium","Large")))
+
+MilliCRSP13D<-subset(MilliCRSP13D,select=-c(MarketCap))
+
+#see who has positive alpha (if excess return is higher than zero on the event date)
+MilliCRSP13D$DATE<-as.character(MilliCRSP13D$DATE)
+MilliCRSP13D<-MilliCRSP13D%>%
+  mutate(DATE=as.Date(DATE, "%Y%m%d"))
+
+MilliCRSP13D<-MilliCRSP13D%>%
+  mutate(Winners=ifelse(DATE=event_date,ifelse(ExcRet>0,"Winner","Loser"),"NA"))
+
+
+
+
+
+
+
+
+
+slit 3
+get min max
+
+
+Size<-subset(MilliCRSP13D,select=c(PERMNO,DATE,MarketCap))
+Size<-Size%>%
+  mutate(Size=)
+
+
+Size<-na.omit(Size)
+quantile(Size)
+
+.#figure out way to plot efficienty...
 #######################################try plotting averages############################################
 #####################################################################################################################
 #####################################################################################################################
