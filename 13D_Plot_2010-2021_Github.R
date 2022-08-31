@@ -192,15 +192,47 @@ MilliCRSP13D<-MilliCRSP13D%>%
   mutate(DATE=as.Date(DATE, "%Y%m%d"))
 
 MilliCRSP13D<-MilliCRSP13D%>%
-  mutate(Winners=ifelse(DATE=event_date,ifelse(ExcRet>0,"Winner","Loser"),"NA"))
+  mutate(event_date=as.Date(event_date, "%Y%m%d"))
 
+MilliCRSP13D<-MilliCRSP13D%>%
+  mutate(Winners=ifelse(DATE==event_date,ifelse(ExcRet>0,"Winner","Loser"),"NA"))
 
+rm(Announced13D,d13,df,ExcessReturns,ReturnStat,threshold)
 
+Winners<-MilliCRSP13D%>%
+  filter(Winners=="Winner")
+Winners<-subset(Winners,select = c())
 
+#distribution of marketcapital of the firm with positive alpha
+tab1(Winners$Size, sort.group = "decreasing", cum.percent = TRUE)
 
+#distribution of Hedgefund of the firm with positive alpha
+tab1(Winners$HedgeFund, sort.group = "decreasing", cum.percent = TRUE)
+tab1(MilliCRSP13D$HedgeFund, sort.group = "decreasing", cum.percent = TRUE)
+#Hedge fund that won -> No =11,821  Yes= 4,835
+#Hedge fund in 13D -> No=22,212  Yes=9,411
+11821/22212
+4835/9411
+#about 53% of non-hedge funds and 51% of hedge funds made positive alpha
 
+tab1(Winners$form_type, sort.group = "decreasing", cum.percent = TRUE)
+#13D activism shows higher number of 
+nrow(filter(MilliCRSP13D, form_type == "SC 13D"))
+nrow(filter(MilliCRSP13D, form_type == "SC 13D/A"))
+#7,971 are just 13D and 23,652 are 13D/A
 
+nrow(filter(MilliCRSP13D, form_type == "SC 13D/A"& HedgeFund =="No"))
+nrow(filter(MilliCRSP13D, form_type == "SC 13D/A"& HedgeFund =="Yes"))
+#16153 among the 23652 activism 13D is not hedgefund. only 7499 are hedge funds.
 
+nrow(filter(Winners, form_type == "SC 13D"))
+nrow(filter(Winners, form_type == "SC 13D/A"))
+
+nrow(filter(Winners, form_type == "SC 13D"))
+
+nrow(dat[dat$sCode == "CA",])
+length(dat$sCode[dat$sCode == "CA"])
+sum(dat$sCode == "CA")
 
 slit 3
 get min max
