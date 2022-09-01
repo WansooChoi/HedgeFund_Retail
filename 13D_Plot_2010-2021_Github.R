@@ -205,6 +205,8 @@ Winners<-subset(Winners,select = c())
 
 #distribution of marketcapital of the firm with positive alpha
 tab1(Winners$Size, sort.group = "decreasing", cum.percent = TRUE)
+tab1(MilliCRSP13D$Size, sort.group = "decreasing", cum.percent = TRUE)
+#better returns for small firms.
 
 #distribution of Hedgefund of the firm with positive alpha
 tab1(Winners$HedgeFund, sort.group = "decreasing", cum.percent = TRUE)
@@ -216,35 +218,20 @@ tab1(MilliCRSP13D$HedgeFund, sort.group = "decreasing", cum.percent = TRUE)
 #about 53% of non-hedge funds and 51% of hedge funds made positive alpha
 
 tab1(Winners$form_type, sort.group = "decreasing", cum.percent = TRUE)
-#13D activism shows higher number of 
-nrow(filter(MilliCRSP13D, form_type == "SC 13D"))
-nrow(filter(MilliCRSP13D, form_type == "SC 13D/A"))
-#7,971 are just 13D and 23,652 are 13D/A
-
-nrow(filter(MilliCRSP13D, form_type == "SC 13D/A"& HedgeFund =="No"))
-nrow(filter(MilliCRSP13D, form_type == "SC 13D/A"& HedgeFund =="Yes"))
-#16153 among the 23652 activism 13D is not hedgefund. only 7499 are hedge funds.
-
-nrow(filter(Winners, form_type == "SC 13D"))
-nrow(filter(Winners, form_type == "SC 13D/A"))
-
-nrow(filter(Winners, form_type == "SC 13D"))
-
-nrow(dat[dat$sCode == "CA",])
-length(dat$sCode[dat$sCode == "CA"])
-sum(dat$sCode == "CA")
-
-slit 3
-get min max
+#Among the ones with positive alpha, there are more amendments (13D/A) 
+#than the new notice 12,137 vs 4,519
+tab1(MilliCRSP13D$form_type, sort.group = "decreasing", cum.percent = TRUE)
+#Among the entire data, 7,971 are new notice (13D) and 23,652 are amendments (13D/A)
+12137/23652
+4519/7971
+#51% of amendments have positive excess return and 56.7% of new notice have positive excess return
 
 
-Size<-subset(MilliCRSP13D,select=c(PERMNO,DATE,MarketCap))
-Size<-Size%>%
-  mutate(Size=)
 
 
-Size<-na.omit(Size)
-quantile(Size)
+
+
+
 
 .#figure out way to plot efficienty...
 #######################################try plotting averages############################################
