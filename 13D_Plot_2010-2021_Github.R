@@ -44,19 +44,24 @@ MilliCRSP<-MilliCRSP%>%
   group_by(PERMNO)%>%
   mutate(MarketCap=PRC*SHROUT)
 
-MilliCRSP<-subset(MilliCRSP,select=c(PERMNO, DATE, TICKER, RET, CUSIP, MarketCap))
+#GET ORDER IMBALANCE
+names(MilliCRSP)[names(MilliCRSP) == 'bs_ratio_retail_num'] <- 'mrbtrd'
+names(MilliCRSP)[names(MilliCRSP) == 'bs_ratio_retail_vol'] <- 'mrbvol'
+names(MilliCRSP)[names(MilliCRSP) == 'mroibtrd'] <- 'mrstrd'
+names(MilliCRSP)[names(MilliCRSP) == 'mroibvol'] <- 'mrsvol'
 
-#n_distinct(d13$form_type)
-#sapply(d13, n_distinct)
-#unique(d13$form_type)
-#subset()
-#substring(dg13$form_type,1,6)
-#D13<-subset(dg13, substring(dg13$form_type,1,6)  == "SC 13D")
-#D13light<-D13[,c(2,3,4,5,6,7,8,9,14,15,16,17,21,28)]
 
-#change date format
-#colnames(D13light)[5]<-"D13_InfoReleaseDate"
+#calcualte new mroibtrd and mroibvol
+MilliCRSP<-MilliCRSP%>%
+  mutate(mroibtrd=(mrbtrd-mrstrd)/(mrbtrd+mrstrd))
 
+MilliCRSP<-MilliCRSP%>%
+  mutate(mroibvol=(mrbvol-mrsvol)/(mrbvol+mrsvol))
+
+#use only things we need
+MilliCRSP<-subset(MilliCRSP,select=c(PERMNO, DATE, TICKER, RET, CUSIP, MarketCap, mroibtrd, mroibvol))
+
+#MERGE 13D AND MILLICRSP
 d13<-d13%>%
   mutate(DATE=format(d13$event_date, "%Y%m%d"))
 
@@ -64,55 +69,24 @@ d13<-d13%>%
 d13<-d13%>%
   mutate(DATE=as.numeric(d13$DATE))
 
-#merge 13d and crsp by CUSIP and DATE
-#for now I am only interested in size and return
-# MilliCRSP<-MilliCRSP[,c(1,2,3,4,6,7,11)]
-# 
-# MilliCRSP<-MilliCRSP%>%
-#   group_by(PERMNO)%>%
-#   mutate(MarketCap=PRC*SHROUT)
-
-# MilliCRSP<-MilliCRSP[,c(1,2,3,4,5,7,8)]
-
-#MilliCRSP13D<-merge(MilliCRSP,d13,by=c('CUSIP','DATE'),all.x = TRUE)
-
 #BETTER TO USE JOIN FUNCTIONS FROM DPLYR THAN THE MERGE. 
 MilliCRSP13D<-left_join(MilliCRSP,d13,by=c('CUSIP','DATE'))
 #WOW THIS IS WAY MUCH FASTER THAN MERGE FUNCTION !!!!
-
 
 head(MilliCRSP13D)
 n_distinct(MilliCRSP13D$CUSIP)
 n_distinct(MilliCRSP$CUSIP)
 n_distinct(d13$CUSIP)
 
-
 #Frequency Table
 tab1(MilliCRSP13D$HedgeFund, sort.group = "decreasing", cum.percent = TRUE)
 #only 16204/10912193 observations is announced in 13D by non-hedgefunds and 7661/10912193 is announced in 13D by hedgefunds
 #makes sense because 13D announcement is annual.
 
-#Make a list of firms that are announced in 13D
+#Make a list of firms that are reported 13D (both hedgefund and non-hedgefund)
 Announced13D<-subset(MilliCRSP13D, HedgeFund=="Yes" | HedgeFund=="No")
 tab1(Announced13D$HedgeFund, sort.group = "decreasing", cum.percent = TRUE)
 #good.
-
-##########################################################################################
-##########################################################################################
-#I think we don't need the list...
-
-#List13D<-subset(Announced13D,select=c(PERMNO,DATE,HedgeFund))
-#List13D<-List13D[!duplicated(List13D), ]
-#names(List13D)[names(List13D) == 'HedgeFund'] <- 'ChosenByHedgeFund'
-
-#Hmmm There are many firms that has been announced by both Hedge funds and non-hedge funds
-#let's just think about hedge fund only
-#later I can use year to match the two table. so that I can know what year it was announced.
-# List13DHF<-subset(List13D, HedgeFund=="Yes")
-# List13DHF<-List13DHF[!duplicated(List13DHF), ]
-# rm(List13D2)
-# List13DHF<-List13DHF[,c(1,5)]
-# colnames(List13DHF)[2]<-"ChosenByHedgeFund"
 
 #want to calculate buy and hold return of the value-weight market
 df<-MilliCRSP
@@ -126,11 +100,6 @@ df<-df%>%
   group_by(DATE)%>%
   mutate(wret=weighted.mean(RET,MarketCap, na.rm=TRUE))
 
-#check if it was successful.
-# see<- df %>% 
-#   arrange(DATE)
-# head(see)
-# rm(see)
 #leftjoin this to MillCRSP13D
 head(df)
 df<-subset(df,select=c(PERMNO, DATE, wret))
@@ -140,44 +109,16 @@ MilliCRSP13D<-left_join(MilliCRSP13D,df,by=c('PERMNO','DATE'))
 #now we have the weighted average market return.
 head(MilliCRSP13D)
 
-
-#left join. add 13D HF list to Millicrsp13D
-#MilliCRSP13D<-left_join(MilliCRSP13D,List13D,by=c('PERMNO','DATE'))
-#tab1(MilliCRSP13D$ChosenByHedgeFund, sort.group = "decreasing", cum.percent = TRUE)
-#CLEAN13DHF<-subset(MilliCRSP13DHF, ChosenByHedgeFund=="Yes")
-
-# #I need excess return and turnover... to see what Barry, Brav, Jian found.
-# #or just see imbalance first.
-# colnames(CLEAN13DHF)[11]<-"mrbtrd"
-# colnames(CLEAN13DHF)[12]<-"mrbvol"
-# colnames(CLEAN13DHF)[13]<-"mrstrd"
-# colnames(CLEAN13DHF)[14]<-"mrsvol"
-# head(CLEAN13DHF)
-# 
-# #calcualte new mroibtrd and mroibvol
-# CLEAN13DHF<-CLEAN13DHF%>%
-#   mutate(mroibtrd=(mrbtrd-mrstrd)/(mrbtrd+mrstrd))
-# 
-# CLEAN13DHF<-CLEAN13DHF%>%
-#   mutate(mroibvol=(mrbvol-mrsvol)/(mrbvol+mrsvol))
-# 
-# CLEAN13DHF<-CLEAN13DHF[,-c(11,12,13,14)]
-# 
-# CLEAN13DHF2<-CLEAN13DHF[,c(1,2,3,4,7,9,10,14,24,25,26,27)]
-
 #also calculate excess return
 MilliCRSP13D<-MilliCRSP13D%>%
   mutate(RET=as.numeric(RET))%>%
   mutate(ExcRet=RET-wret)
 
-# CLEAN13DHF<-CLEAN13DHF3
-# rm(CLEAN13DHF2,CLEAN13DHF3)
-
 #want to know the statistics of excess return
 ExcessReturns<-as.data.table(MilliCRSP13D$ExcRet)
 st(MilliCRSP13D, vars = 'ExcRet')
 summary(ExcessReturns)
-ReturnStat<-skim(ExcessReturns)
+skim(ExcessReturns)
 
 #also want to know the statistics of size and add new column that indicates large medium small
 threshold<-as.data.frame(quantile(MilliCRSP13D$MarketCap, c(.33, .66, .99)) )
@@ -194,6 +135,8 @@ MilliCRSP13D<-MilliCRSP13D%>%
 MilliCRSP13D<-MilliCRSP13D%>%
   mutate(event_date=as.Date(event_date, "%Y%m%d"))
 
+#############FIX HERE#############
+#hmmm buy and hold menas pt -p0 at time t   pt+1 -p0 at time t+1 and so on...
 MilliCRSP13D<-MilliCRSP13D%>%
   mutate(Winners=ifelse(DATE==event_date,ifelse(ExcRet>0,"Winner","Loser"),"NA"))
 
