@@ -25,14 +25,12 @@ library(skimr)
 #I will use github desk top instead of git or git in r because
 #github desktop is easiest at this moment
 
-library(data.table)
-getwd()
 d13<-fread("C:/Users/user/Desktop/WhaleWisdom/13D 2010-2021.csv")
 MilliCRSP<-fread("C:/Users/user/Desktop/WhaleWisdom/MilliCRSP 2010-2021.csv")
 
 ########################################################################################
 #colnames(d13)[21]<-"filer name"
-colnames(d13)[6]<-"CUSIP"
+names(d13)[names(d13) == 'cusip_number'] <- 'CUSIP'
 d13<- d13%>%
   mutate(CUSIP=substr(CUSIP,1,8))
 head(d13)
@@ -44,22 +42,8 @@ MilliCRSP<-MilliCRSP%>%
   group_by(PERMNO)%>%
   mutate(MarketCap=PRC*SHROUT)
 
-#GET ORDER IMBALANCE
-names(MilliCRSP)[names(MilliCRSP) == 'bs_ratio_retail_num'] <- 'mrbtrd'
-names(MilliCRSP)[names(MilliCRSP) == 'bs_ratio_retail_vol'] <- 'mrbvol'
-names(MilliCRSP)[names(MilliCRSP) == 'mroibtrd'] <- 'mrstrd'
-names(MilliCRSP)[names(MilliCRSP) == 'mroibvol'] <- 'mrsvol'
-
-
-#calcualte new mroibtrd and mroibvol
-MilliCRSP<-MilliCRSP%>%
-  mutate(mroibtrd=(mrbtrd-mrstrd)/(mrbtrd+mrstrd))
-
-MilliCRSP<-MilliCRSP%>%
-  mutate(mroibvol=(mrbvol-mrsvol)/(mrbvol+mrsvol))
-
 #use only things we need
-MilliCRSP<-subset(MilliCRSP,select=c(PERMNO, DATE, TICKER, RET, CUSIP, MarketCap, mroibtrd, mroibvol))
+MilliCRSP<-subset(MilliCRSP,select=c(PERMNO, DATE, TICKER, PRC, RET, CUSIP, MarketCap, mroibtrd, mroibvol))
 
 #MERGE 13D AND MILLICRSP
 d13<-d13%>%
@@ -88,7 +72,103 @@ Announced13D<-subset(MilliCRSP13D, HedgeFund=="Yes" | HedgeFund=="No")
 tab1(Announced13D$HedgeFund, sort.group = "decreasing", cum.percent = TRUE)
 #good.
 
+#want to calculate buy and hold return -20 ~ +20 days from event date.
+MilliCRSP13D$DATE<-as.character(MilliCRSP13D$DATE)
+MilliCRSP13D<-MilliCRSP13D%>%
+  mutate(DATE=as.Date(DATE, "%Y%m%d"))
+
+MilliCRSP13D<-MilliCRSP13D%>%
+  mutate(event_date=as.Date(event_date, "%Y%m%d"))
+
+#see how many NA we have.
+sapply(MilliCRSP13D, function(y) sum(length(which(is.na(y)))))
+####################################################################################################################
+# ensure Date and EventDate are Date columns
+MilliCRSP13D <- MilliCRSP13D %>% mutate(across(c(DATE,event_date), ~as.Date(.x)))
+
+#calculate buy hold return for inidividual stock around event date
+MilliCRSP13D2<-subset(MilliCRSP13D,select=c(DATE,PERMNO,event_date,PRC))
+MilliCRSP13D2<-left_join(
+  dplyr::select(MilliCRSP13D2,PERMNO, DATE), 
+  inner_join(MilliCRSP13D2 %>% dplyr::select(-event_date),filter(MilliCRSP13D2,!is.na(event_date)) %>% distinct(PERMNO, event_date), by="PERMNO") %>%
+    filter(abs(event_date-DATE)<=40) %>% 
+    group_by(PERMNO, event_date) %>% 
+    mutate(BuyHoldReturn_i = c(NA,PRC[-1]/PRC[1]-1)),
+  by=c("PERMNO", "DATE")
+)
+
+#calculate buy hold return for value-weight market around event date
+MilliCRSP13D3<-subset(MilliCRSP13D,select=c(DATE,PERMNO,event_date,MarketCap))
+MilliCRSP13D3<-left_join(
+  dplyr::select(MilliCRSP13D3,PERMNO, DATE), 
+  inner_join(MilliCRSP13D3 %>% dplyr::select(-event_date),filter(MilliCRSP13D3,!is.na(event_date)) %>% distinct(PERMNO, event_date), by="PERMNO") %>%
+    filter(abs(event_date-DATE)<=40) %>% 
+    group_by(PERMNO, event_date) %>% 
+    mutate(BuyHoldReturn_m = c(NA,PRC[-1]/PRC[1]-1)),
+  by=c("PERMNO", "DATE")
+)
+
+
+
+CleanSample <- CLEAN13DHF %>%
+  group_by(DATE) %>%
+  summarize(imbal_vw = weighted.mean(mroibvol,MarketCap, na.rm=TRUE), 
+            ret_vw=weighted.mean(ExcRet,MarketCap, na.rm=TRUE))%>%
+  ungroup()
+
+
+
+
+
+setDT(MilliCRSP13D)
+MilliCRSP13D[,(c("DATE", "event_date")):=lapply(.SD, as.Date), .SDcols=c("DATE", "event_date")]
+MilliCRSP13D2<-MilliCRSP13D[,!c("event_date")][unique(MilliCRSP13D[!is.na(event_date), .(PERMNO, event_date)]), on="PERMNO", allow.cartesian=T][
+  abs(event_date-DATE)<=35][,BuyHoldReturn:=c(NA,PRC[-1]/PRC[1]-1), .(PERMNO)][
+    MilliCRSP13D[,.(PERMNO,DATE)], on=.(PERMNO,DATE)]
+
+
+
+
+
+
+
+
+####################################################################################################################
+MilliCRSP13D2 |> group_by(PERMNO) |> mutate( x = PRC/lag(PRC) - 1 ,
+                              y = which(DATE == event_date) - 1:n() ,
+                              BuyHoldReturn = case_when(between(y , -5 , 5) ~ x , TRUE ~ NA_real_))
+
+
+
+MilliCRSP13D %>%
+  group_by(PERMNO) %>%
+  mutate(x = PRC/lag(PRC) - 1, y = which(DATE == event_date) - 1:n() , BuyHoldReturn = case_when(between(y , -5 , 5) ~ x , TRUE ~ NA_real_)) 
+# %>%
+#   select(-x , -y)
+
+
+
+MilliCRSP13D |> group_by(PERMNO) |> mutate(x = PRC/lag(PRC)-1, y = which(DATE == event_date)-1:n(), BuyHoldReturn = case_when(between(y , -5 , 5) ~ x, TRUE ~ NA_real_))
+#|> select(-x , -y)
+
+MilliCRSP13D <- MilliCRSP13D %>%
+  group_by(PERMNO) %>% 
+  mutate(x = PRC/lag(PRC)-1, y = which(DATE == event_date)-1:n(), BuyHoldReturn = case_when(between(y , -5 , 5) ~ x, TRUE ~ NA_real_)) %>%
+  select(-x , -y)
+
+
+
+
+MilliCRSP13D<-MilliCRSP13D%>%
+  group_by(PERMNO)%>%
+  mutate(BHret=ifelse(DATE==event_date,ifelse(ExcRet>0,"Winner","Loser"),"NA"))
 #want to calculate buy and hold return of the value-weight market
+
+
+
+
+
+
 df<-MilliCRSP
 
 df<-df%>%
@@ -135,8 +215,8 @@ MilliCRSP13D<-MilliCRSP13D%>%
 MilliCRSP13D<-MilliCRSP13D%>%
   mutate(event_date=as.Date(event_date, "%Y%m%d"))
 
-#############FIX HERE#############
-#hmmm buy and hold menas pt -p0 at time t   pt+1 -p0 at time t+1 and so on...
+###############################################
+
 MilliCRSP13D<-MilliCRSP13D%>%
   mutate(Winners=ifelse(DATE==event_date,ifelse(ExcRet>0,"Winner","Loser"),"NA"))
 
