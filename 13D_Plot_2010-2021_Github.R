@@ -82,29 +82,132 @@ MilliCRSP13D<-MilliCRSP13D%>%
 
 #see how many NA we have.
 sapply(MilliCRSP13D, function(y) sum(length(which(is.na(y)))))
+
+#see how data looks like when we only use 13D (first report) i.e. without 13D/A (amendment)
+unique(MilliCRSP13D$form_type) 
+MilliCRSP13D_Only<-MilliCRSP13D[- grep("SC 13D/A", MilliCRSP13D$form_type),]
+
+test<-MilliCRSP13D[MilliCRSP13D$form_type=="SC 13D",]
+test <- test[!is.na(test$form_type),]
+
+MilliCRSP13D_Only<-MilliCRSP13D[-MilliCRSP13D$form_type=="SC 13D/A"]
+  
+  subset(MilliCRSP13D,!form_type== "SC 13D/A")
+
+events = unique(MilliCRSP13D2[!is.na(event_date),.(PERMNO,event_date)])
+
+MilliCRSP13D<-MilliCRSP13D %>%
+  filter(form_type=="13D")
+
+
+
 ####################################################################################################################
 # ensure Date and EventDate are Date columns
-MilliCRSP13D <- MilliCRSP13D %>% mutate(across(c(DATE,event_date), ~as.Date(.x)))
+# MilliCRSP13D <- MilliCRSP13D %>% mutate(across(c(DATE,event_date), ~as.Date(.x)))
+# 
+# #calculate buy hold return for inidividual stock around event date
+# MilliCRSP13D2<-subset(MilliCRSP13D,select=c(DATE,PERMNO,event_date,PRC,MarketCap))
+# MilliCRSP13D2<-left_join(
+#   MilliCRSP13D2, 
+#   inner_join(MilliCRSP13D2 %>% dplyr::select(-event_date),filter(MilliCRSP13D2,!is.na(event_date)) %>% distinct(PERMNO, event_date), by="PERMNO") %>%
+#     filter(abs(event_date-DATE)<=40) %>% 
+#     group_by(PERMNO, event_date) %>% 
+#     mutate(BuyHoldReturn_i = c(NA,PRC[-1]/PRC[1]-1)),
+#   by=c("PERMNO", "DATE")
+# )
+# 
+# MilliCRSP13D2<-subset(MilliCRSP13D2,select=-c(PRC.y, MarketCap.y,event_date.y))
+# names(MilliCRSP13D2)[names(MilliCRSP13D2) == 'PRC.x'] <- 'PRC'
+# names(MilliCRSP13D2)[names(MilliCRSP13D2) == 'MarketCap.x'] <- 'MarketCap'
+# names(MilliCRSP13D2)[names(MilliCRSP13D2) == 'event_date.x'] <- 'event_date'
 
-#calculate buy hold return for inidividual stock around event date
-MilliCRSP13D2<-subset(MilliCRSP13D,select=c(DATE,PERMNO,event_date,PRC))
-MilliCRSP13D2<-left_join(
-  dplyr::select(MilliCRSP13D2,PERMNO, DATE), 
-  inner_join(MilliCRSP13D2 %>% dplyr::select(-event_date),filter(MilliCRSP13D2,!is.na(event_date)) %>% distinct(PERMNO, event_date), by="PERMNO") %>%
-    filter(abs(event_date-DATE)<=40) %>% 
-    group_by(PERMNO, event_date) %>% 
-    mutate(BuyHoldReturn_i = c(NA,PRC[-1]/PRC[1]-1)),
-  by=c("PERMNO", "DATE")
-)
+#calculate trade imbalances
+##########################################################################################
+#choose rows with no NA in event date and only show ID and event date
+head(MilliCRSP13D)
+MilliCRSP13D <- MilliCRSP13D %>% mutate(across(c(DATE,event_date), ~as.Date(.x)))
+MilliCRSP13D2<-subset(MilliCRSP13D,select=c(DATE,PERMNO,event_date,mroibvol,MarketCap))
+setDT(MilliCRSP13D2)
+events = unique(MilliCRSP13D2[!is.na(event_date),.(PERMNO,event_date)])
+
+#helper column
+events[, eDate:=event_date]
+
+#makes new column(temporary) lower and upper boundary
+MilliCRSP13D2[, `:=`(s=DATE-20, e=DATE+20)]
+
+#non-equi match
+imb = events[MilliCRSP13D2, on=.(PERMNO, event_date>=s, event_date<=e), nomatch=0]
+
+#Generate the BuyHoldReturn column, by ID and EventDate
+imb = imb[, .(DATE, Imbalance=c(NA, mroibvol)), by = .(PERMNO,eDate)]
+
+#merge back to get the full data
+bhr = bhr[MilliCRSP13D2,on=.(PERMNO,DATE),.(PERMNO,DATE,PRC,event_date=i.event_date,BuyHoldReturn_Mkt)]
+
+
+
+
+
+
+
+
+##########################################################################################
+#choose rows with no NA in event date and only show ID and event date
+events = unique(MilliCRSP13D2[!is.na(event_date),.(PERMNO,event_date)])
+events2 = unique(MilliCRSP13D2[!is.na(event_date)])
+
+#helper column
+events[, eDate:=event_date]
+
+#makes new column(temporary) lower and upper boundary
+MilliCRSP13D2[, `:=`(s=DATE-6, e=DATE+6)]
+
+#non-equi match
+bhr = events[MilliCRSP13D2, on=.(PERMNO, event_date>=s, event_date<=e), nomatch=0]
+
+#Generate the BuyHoldReturn column, by ID and EventDate
+bhr = bhr[, .(DATE, BuyHoldReturn_Mkt=c(NA, PRC[-1]/PRC[1] -1)), by = .(PERMNO,eDate)]
+
+#merge back to get the full data
+bhr = bhr[MilliCRSP13D2,on=.(PERMNO,DATE),.(PERMNO,DATE,PRC,event_date=i.event_date,BuyHoldReturn_Mkt)]
+
+############################################################################################################
+
+
+setDT(MilliCRSP13D)
+MilliCRSP13D[,(c("DATE", "event_date")):=lapply(.SD, as.Date), .SDcols=c("DATE", "event_date")]
+
+
+MilliCRSP13D2<-MilliCRSP13D[,!c("event_date")][unique(MilliCRSP13D[!is.na(event_date), .(PERMNO, event_date)]), on="PERMNO", allow.cartesian=T][
+  abs(event_date-DATE)<=35][,BuyHoldReturn:=c(NA,PRC[-1]/PRC[1]-1), .(PERMNO)][
+    MilliCRSP13D[,.(PERMNO,DATE)], on=.(PERMNO,DATE)]
+
+
+
+
+
+
+
+
+
+
+
+
+length(unique(MilliCRSP$PERMNO))
+length(unique(MilliCRSP13D$PERMNO))
+length(unique(MilliCRSP13D2$PERMNO))
+test<-na.omit(MilliCRSP13D2)
+length(unique(test$PERMNO))
 
 #calculate buy hold return for value-weight market around event date
-MilliCRSP13D3<-subset(MilliCRSP13D,select=c(DATE,PERMNO,event_date,MarketCap))
+MilliCRSP13D3<-subset(MilliCRSP13D,select=c(DATE,PERMNO,PRC,event_date,MarketCap))
 MilliCRSP13D3<-left_join(
   dplyr::select(MilliCRSP13D3,PERMNO, DATE), 
   inner_join(MilliCRSP13D3 %>% dplyr::select(-event_date),filter(MilliCRSP13D3,!is.na(event_date)) %>% distinct(PERMNO, event_date), by="PERMNO") %>%
     filter(abs(event_date-DATE)<=40) %>% 
     group_by(PERMNO, event_date) %>% 
-    mutate(BuyHoldReturn_m = c(NA,PRC[-1]/PRC[1]-1)),
+    mutate(BuyHoldReturn_m = c(NA,weighted.mean(PRC[-1]/PRC[1]-1),MarketCap,na.rm=TRUE)),
   by=c("PERMNO", "DATE")
 )
 
@@ -116,7 +219,9 @@ CleanSample <- CLEAN13DHF %>%
             ret_vw=weighted.mean(ExcRet,MarketCap, na.rm=TRUE))%>%
   ungroup()
 
-
+df<-df%>%
+  group_by(DATE)%>%
+  mutate(wret=weighted.mean(RET,MarketCap, na.rm=TRUE))
 
 
 
