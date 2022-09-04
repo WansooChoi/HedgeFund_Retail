@@ -126,8 +126,12 @@ MilliCRSP13D<-MilliCRSP13D %>%
 #choose rows with no NA in event date and only show ID and event date
 head(MilliCRSP13D)
 MilliCRSP13D <- MilliCRSP13D %>% mutate(across(c(DATE,event_date), ~as.Date(.x)))
-MilliCRSP13D2<-subset(MilliCRSP13D,select=c(DATE,PERMNO,event_date,mroibvol,MarketCap))
+
+MilliCRSP13D2<-subset(MilliCRSP13D,select=c(DATE,PERMNO,event_date,PRC,mroibvol,MarketCap))
 setDT(MilliCRSP13D2)
+
+
+
 events = unique(MilliCRSP13D2[!is.na(event_date),.(PERMNO,event_date)])
 
 #helper column
@@ -145,6 +149,7 @@ imb = imb[, .(DATE, Imbalance=c(NA, mroibvol)), by = .(PERMNO,eDate)]
 #merge back to get the full data
 bhr = bhr[MilliCRSP13D2,on=.(PERMNO,DATE),.(PERMNO,DATE,PRC,event_date=i.event_date,BuyHoldReturn_Mkt)]
 
+imb = imb[, .(DATE, BuyHoldReturn_Mkt=c(NA, PRC[-1]/PRC[1] -1)), by = .(PERMNO,eDate)]
 
 
 
