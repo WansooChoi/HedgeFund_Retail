@@ -91,9 +91,10 @@ test<-subset(MilliCRSP13D2,!is.na(event_date))
 #looks good
 rm(test)
 
+
 #want to calculate buy and hold return -20 ~ +20 days from event date.
 #choose rows with no NA in event date and only show ID and event date
-MilliCRSP13D2<-subset(MilliCRSP13D2,select=c(DATE,PERMNO,event_date,PRC,mroibvol,MarketCap))
+MilliCRSP13D2<-subset(MilliCRSP13D2,select=c(DATE,PERMNO,filed_as_of_date,event_date,PRC,mroibvol,MarketCap))
 MilliCRSP13D2 <- MilliCRSP13D2 %>% mutate(across(c(DATE,event_date), ~as.Date(.x,"%Y%m%d")))
 
 setDT(MilliCRSP13D2)
@@ -110,44 +111,80 @@ MilliCRSP13D2[, `:=`(s=DATE-20, e=DATE+20)]
 bhr = events[MilliCRSP13D2, on=.(PERMNO, event_date>=s, event_date<=e), nomatch=0]
 
 #Generate the BuyHoldReturn column, by ID and EventDate
-bhr = bhr[, .(DATE, BuyHoldReturn_Mkt=c(NA, PRC[-1]/PRC[1] -1)), by = .(PERMNO,eDate)]
+bhr = bhr[, .(DATE, BuyHoldReturn_I=c(NA, PRC[-1]/PRC[1] -1)), by = .(PERMNO,eDate)]
 
 #merge back to get the ful data
-bhr = bhr[MilliCRSP13D2,on=.(PERMNO,DATE),.(PERMNO,DATE,PRC,event_date=i.event_date,BuyHoldReturn_Mkt,mroibvol,MarketCap)]
+bhr = bhr[MilliCRSP13D2,on=.(PERMNO,DATE),.(PERMNO,DATE,PRC,event_date=i.event_date,filed_as_of_date,BuyHoldReturn_I,mroibvol,MarketCap)]
 
 bhr2<-bhr%>%
-  filter(!is.na(BuyHoldReturn_Mkt))
+  filter(!is.na(BuyHoldReturn_I))
 
 #until here is good
+  
+bhr2<-bhr2%>%
+  mutate(absmroibvol=abs(mroibvol))
+
+# bhr2<-bhr2%>%
+#   group_by(DATE)%>%
+#   mutate(wabsmroibvol=weighted.mean(absmroibvol,MarketCap))
+
+########################################################################################
+#plot..
+bhr2 <- bhr2 %>%
+  group_by(PERMNO) %>%
+  mutate(order = row_number() - match(TRUE, !is.na(event_date))) %>%
+  ungroup 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 ########################################################################
-#Market return to calculate excess market
-#weighted price
-bhr<-bhr2
-#rm(bhr2,Announced13D,MilliCRSP13D, d13,MilliCRSP,events)
-bhr<-bhr%>%
-  mutate(wprice=weighted.mean(PRC,MarketCap))
+# #Market return to calculate excess market
+# #weighted price
+# #bhr<-bhr2
+# rm(events)
+# 
+# ########################
+# setDT(MilliCRSP13D2)
+# events = unique(MilliCRSP13D2[!is.na(event_date),.(PERMNO,event_date)])
+# #helper column
+# events[, eDate:=event_date]
+# #makes new column(temporary) lower and upper boundary
+# MilliCRSP13D2[, `:=`(s=DATE-20, e=DATE+20)]
+# #non-equi match
+# bhrm = events[MilliCRSP13D2, on=.(PERMNO, event_date>=s, event_date<=e), nomatch=0]
+# #Generate the BuyHoldReturn column, by ID and EventDate
+# bhrm = bhrm[, .(DATE, BuyHoldReturn_Mkt=c(NA, WPRC[-1]/WPRC[1] -1)), by = .(PERMNO,eDate)]
+# #merge back to get the ful data
+# bhrm = bhrm[MilliCRSP13D2,on=.(PERMNO,DATE),.(PERMNO,DATE,PRC,event_date=i.event_date,BuyHoldReturn_I,BuyHoldReturn_Mkt,mroibvol,MarketCap)]
 
-
-
-
-#non-equi match
-imb = events[MilliCRSP13D2, on=.(PERMNO, event_date>=s, event_date<=e), nomatch=0]
-
-#Generate the BuyHoldReturn column, by ID and EventDate
-imb = imb[, .(DATE, Imbalance=c(NA, mroibvol)), by = .(PERMNO,eDate)]
-
-#merge back to get the full data
-bhr = bhr[MilliCRSP13D2,on=.(PERMNO,DATE),.(PERMNO,DATE,PRC,event_date=i.event_date,BuyHoldReturn_Mkt)]
-
-imb = imb[, .(DATE, BuyHoldReturn_Mkt=c(NA, PRC[-1]/PRC[1] -1)), by = .(PERMNO,eDate)]
-
-
-
-
-
-
+##################################################################3
 
 ##########################################################################################
 #choose rows with no NA in event date and only show ID and event date
