@@ -1,24 +1,25 @@
 # setup
-library(plm)
+#library(plm)
 library(dplyr)
+#library(purrr)
 #library(plyr) do not use plyr with dplyr
 library(tidyverse)
-library(readr)
+#library(tidyr)
+#library(readr)
 library(data.table)
-library(DataCombine)
-library(functional)
-library(stringr)
-library(slider)
+# library(DataCombine)
+# library(functional)
+# library(stringr)
+# library(slider)
 library(ggplot2)
-library(zoo)
-library(sandwich)
+#library(zoo)
+#library(sandwich)
 library(lubridate)
-require(foreign)
-require(lmtest)
-library(sandwich)
-library(epiDisplay)
-library(vtable)
-library(skimr)
+# require(foreign)
+# require(lmtest)
+# library(epiDisplay)
+# library(vtable)
+# library(skimr)
 #library(scales)
 
 #ok github good to go.
@@ -76,90 +77,162 @@ tab1(Announced13D$HedgeFund, sort.group = "decreasing", cum.percent = TRUE)
 tab1(Announced13D$form_type, sort.group = "decreasing", cum.percent = TRUE)
 #There are 4993 13D (first report) and 18872 13D/A (amendment report)
 
-#ignore 13D/A by deleting values for eventdate when formtype= SC 13D/A
-MilliCRSP13D$DATE<-as.character(MilliCRSP13D$DATE)
-MilliCRSP13D<-MilliCRSP13D%>%
-  mutate(DATE=format(DATE, "%Y%m%d"))
-MilliCRSP13D<-MilliCRSP13D%>%
-  mutate(event_date=format(event_date, "%Y%m%d"))
+# #ignore 13D/A by deleting values for eventdate when formtype= SC 13D/A
+# MilliCRSP13D$DATE<-as.character(MilliCRSP13D$DATE)
+# MilliCRSP13D<-MilliCRSP13D%>%
+#   mutate(DATE=format(DATE, "%Y%m%d"))
+# MilliCRSP13D2<-MilliCRSP13D2%>%
+#   mutate(DATE=as.Date(DATE, "%Y%m%d"))
 
-# MilliCRSP13D$form_type<-as.character(MilliCRSP13D$form_type)
 MilliCRSP13D2<-MilliCRSP13D%>%
-  mutate(event_date=ifelse(form_type=="SC 13D/A",NA,event_date))
+  mutate(event_date=format(event_date, "%Y%m%d"))
+MilliCRSP13D2<-MilliCRSP13D2%>%
+  mutate(event_date=as.Date(event_date, "%Y%m%d"))
+
+MilliCRSP13D2<-MilliCRSP13D2%>%
+  mutate(DATE=as.Date(as.character(DATE),format="%Y%m%d"))
+
+rm(Announced13D,d13,MilliCRSP,MilliCRSP13D)
+gc()
+
+###############################SEP 16 problemmmm###############################
+#if formtype is 13D/A, then event_date is NA.
+MilliCRSP13D2$event_date[MilliCRSP13D2$form_type == 'SC 13D/A'] <- NA
+
 #check if it worked by deleting rows if event_date is NA
 test<-subset(MilliCRSP13D2,!is.na(event_date))
 #looks good
 rm(test)
 
+#MilliCRSP13D2$DATE<-as.character(MilliCRSP13D2$DATE)
+# #want to calculate buy and hold return -20 ~ +20 days from event date.
+# #choose rows with no NA in event date and only show ID and event date
+# MilliCRSP13D2<-subset(MilliCRSP13D2,select=c(DATE,PERMNO,event_date,PRC,mroibvol,MarketCap))
+# MilliCRSP13D2 <- MilliCRSP13D2 %>% mutate(across(c(DATE,event_date), ~as.Date(.x,"%Y%m%d")))
+# MilliCRSP13D2<-MilliCRSP13D2[!duplicated(MilliCRSP13D2),]
+# setDT(MilliCRSP13D2)
+# 
+# events = unique(MilliCRSP13D2[!is.na(event_date),.(PERMNO,event_date)])
+# 
+# #helper column
+# events[, eDate:=event_date]
+# 
+# #makes new column(temporary) lower and upper boundary
+# MilliCRSP13D2[, `:=`(s=DATE-20, e=DATE+20)]
+# 
+# #non-equi match
+# bhr = events[MilliCRSP13D2, on=.(PERMNO, event_date>=s, event_date<=e), nomatch=0]
+# 
+# #Generate the BuyHoldReturn column, by ID and EventDate
+# bhr = bhr[, .(DATE, BuyHoldReturn_I=c(NA, PRC[-1]/PRC[1] -1)), by = .(PERMNO,eDate)]
+# 
+# #merge back to get the ful data
+# bhr = bhr[MilliCRSP13D2,on=.(PERMNO,DATE),.(PERMNO,DATE,PRC,event_date=i.event_date,BuyHoldReturn_I,mroibvol,MarketCap)]
+# 
+# bhr2<-bhr%>%
+#   filter(!is.na(BuyHoldReturn_I))
+# 
+# #until here is good
+#   
+# bhr<-bhr%>%
+#   mutate(absmroibvol=abs(mroibvol))
 
-#want to calculate buy and hold return -20 ~ +20 days from event date.
-#choose rows with no NA in event date and only show ID and event date
-MilliCRSP13D2<-subset(MilliCRSP13D2,select=c(DATE,PERMNO,filed_as_of_date,event_date,PRC,mroibvol,MarketCap))
-MilliCRSP13D2 <- MilliCRSP13D2 %>% mutate(across(c(DATE,event_date), ~as.Date(.x,"%Y%m%d")))
-
-setDT(MilliCRSP13D2)
-
-events = unique(MilliCRSP13D2[!is.na(event_date),.(PERMNO,event_date)])
-
-#helper column
-events[, eDate:=event_date]
-
-#makes new column(temporary) lower and upper boundary
-MilliCRSP13D2[, `:=`(s=DATE-20, e=DATE+20)]
-
-#non-equi match
-bhr = events[MilliCRSP13D2, on=.(PERMNO, event_date>=s, event_date<=e), nomatch=0]
-
-#Generate the BuyHoldReturn column, by ID and EventDate
-bhr = bhr[, .(DATE, BuyHoldReturn_I=c(NA, PRC[-1]/PRC[1] -1)), by = .(PERMNO,eDate)]
-
-#merge back to get the ful data
-bhr = bhr[MilliCRSP13D2,on=.(PERMNO,DATE),.(PERMNO,DATE,PRC,event_date=i.event_date,filed_as_of_date,BuyHoldReturn_I,mroibvol,MarketCap)]
-
-bhr2<-bhr%>%
-  filter(!is.na(BuyHoldReturn_I))
-
-#until here is good
-  
-bhr2<-bhr2%>%
-  mutate(absmroibvol=abs(mroibvol))
-
-# bhr2<-bhr2%>%
-#   group_by(DATE)%>%
-#   mutate(wabsmroibvol=weighted.mean(absmroibvol,MarketCap))
-
+#rm(Announced13D,d13,events,MilliCRSP,MilliCRSP13D,MilliCRSP13D2)
 ########################################################################################
-#plot..
-bhr2 <- bhr2 %>%
+#in order to plot, make all the sequences visible 
+gc()
+
+# MilliCRSP13D2<-MilliCRSP13D2%>%
+#   mutate(absmroibvol=abs(mroibvol))
+
+MilliCRSP13D3<-subset(MilliCRSP13D2,select=c(PERMNO, DATE, event_date,absmroibvol))
+MilliCRSP13D3<-MilliCRSP13D3[!duplicated(MilliCRSP13D3),]
+rm(MilliCRSP13D2)
+gc()
+
+###################################################################################################
+####################SAVE DATA AND RUN WITH FRESH WINDOW FOR RAM##########################
+###################################################################################################
+#write.csv(MilliCRSP13D3,"C:/Users/user/Desktop/HedgeFund_Retail_GitDeskTop/MilliCRSP13D3.csv", row.names = FALSE )
+MilliCRSP13D3<-fread("C:/Users/user/Desktop/HedgeFund_Retail_GitDeskTop/MilliCRSP13D3.csv")
+
+
+test<-subset(MilliCRSP13D3,!is.na(event_date))
+#rm(test)
+
+
+out <- MilliCRSP13D3 %>%
+  mutate(rn = row_number()) %>% 
+  filter(complete.cases(event_date)) %>% 
+  rowwise %>%
+  mutate(order = list(-20:20), rn = list(rn + order)) %>%
+  ungroup %>%
+  unnest(where(is.list)) %>% 
+  mutate(across(c("DATE", "event_date", "absmroibvol"),
+                ~ MilliCRSP13D3[[cur_column()]][rn])) %>% 
+  select(-rn) %>% 
+  mutate(event_date = case_when(order == 0 ~ event_date))
+
+
+out<-out%>%
+  mutate(group_number=rep(1:4015, each=41))
+
+
+
+
+
+
+
+out2 <- out %>% 
+  group_by(grp = cumsum(c(TRUE, diff(y) < 0))) %>% 
+  mutate(z = as.integer(gl(n(), 5, n())),
+         z = replace(z,  ave(z, z, FUN = length) < 5, NA)) %>% 
+  ungroup %>% 
+  fill(z) %>%
+  select(-grp)
+
+
+
+#write.csv(out2,"C:/Users/user/Desktop/HedgeFund_Retail_GitDeskTop/out2.csv", row.names = FALSE )
+
+
+out2 <- out %>%
+  mutate(rn = row_number()) %>% 
+
+
+###########################################
+
+
+
+
+
+
+
+
+
+
+
+
+
+f1 <- function(event_date) {
+  tmp <- rep(NA_integer_, length(event_date))
+  i1 <- which(complete.cases(event_date))
+  d1 <- purrr::map_dfr(i1, ~ tibble(val = -5:5, ind = (.x + val) 
+  ) %>% 
+    filter(ind >=1 & ind <= length(event_date)) %>%
+    distinct(ind, .keep_all = TRUE))
+  replace(tmp, d1$ind, d1$val)
+  
+}
+
+bhr2<-subset(bhr,select=c(DATE,PERMNO,event_date,absmroibvol))
+bhr3<-bhr2[!duplicated(bhr2),]
+  
+bhr3_2 <- bhr3 %>% 
   group_by(PERMNO) %>%
-  mutate(order = row_number() - match(TRUE, !is.na(event_date))) %>%
-  ungroup 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+  mutate(order = f1(event_date)) %>%
+  ungroup %>% 
+  filter(complete.cases(order))
 
 
 
