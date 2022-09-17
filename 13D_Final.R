@@ -145,7 +145,7 @@ MilliCRSP13D3<-fread("C:/Users/user/Desktop/HedgeFund_Retail_GitDeskTop/MilliCRS
 
 test<-subset(MilliCRSP13D3,!is.na(event_date))
 #rm(test)
-
+head(MilliCRSP13D3)
 
 out <- MilliCRSP13D3 %>%
   mutate(rn = row_number()) %>% 
@@ -154,14 +154,26 @@ out <- MilliCRSP13D3 %>%
   mutate(order = list(-20:20), rn = list(rn + order)) %>%
   ungroup %>%
   unnest(where(is.list)) %>% 
-  mutate(across(c("DATE", "event_date", "absmroibvol"),
+  mutate(across(c("PERMNO", "DATE","RET","CUSIP", "event_date","MarketCap", "mroibvol","stock_id","filer_id", "HedgeFund"),
                 ~ MilliCRSP13D3[[cur_column()]][rn])) %>% 
   select(-rn) %>% 
   mutate(event_date = case_when(order == 0 ~ event_date))
 
 
+# out2 <- MilliCRSP13D3 %>%
+#   mutate(rn = row_number()) %>% 
+#   filter(complete.cases(event_date)) %>% 
+#   rowwise %>%
+#   mutate(order = list(-3:3), rn = list(rn + order)) %>%
+#   ungroup %>%
+#   unnest(where(is.list)) %>% 
+#   mutate(across(c("DATE", "event_date", "mroibvol"),
+#                 ~ MilliCRSP13D3[[cur_column()]][rn])) %>% 
+#   select(-rn) %>% 
+#   mutate(event_date = case_when(order == 0 ~ event_date))
+
 out<-out%>%
-  mutate(group_number=rep(1:4015, each=41))
+  mutate(group_number=rep(1:4632, each=41))
 
 
 

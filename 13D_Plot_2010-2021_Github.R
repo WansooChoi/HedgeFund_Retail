@@ -84,23 +84,29 @@ tab1(Announced13D$form_type, sort.group = "decreasing", cum.percent = TRUE)
 # MilliCRSP13D2<-MilliCRSP13D2%>%
 #   mutate(DATE=as.Date(DATE, "%Y%m%d"))
 
-MilliCRSP13D2<-MilliCRSP13D%>%
+MilliCRSP13D<-MilliCRSP13D%>%
   mutate(event_date=format(event_date, "%Y%m%d"))
-MilliCRSP13D2<-MilliCRSP13D2%>%
+MilliCRSP13D<-MilliCRSP13D%>%
   mutate(event_date=as.Date(event_date, "%Y%m%d"))
 
-MilliCRSP13D2<-MilliCRSP13D2%>%
+MilliCRSP13D<-MilliCRSP13D%>%
   mutate(DATE=as.Date(as.character(DATE),format="%Y%m%d"))
 
-rm(Announced13D,d13,MilliCRSP,MilliCRSP13D)
+rm(Announced13D,d13,MilliCRSP)
 gc()
 
 ###############################SEP 16 problemmmm###############################
 #if formtype is 13D/A, then event_date is NA.
-MilliCRSP13D2$event_date[MilliCRSP13D2$form_type == 'SC 13D/A'] <- NA
+head(MilliCRSP13D2)
+MilliCRSP13D$event_date[MilliCRSP13D$form_type == 'SC 13D/A'] <- NA
+MilliCRSP13D$stock_id[MilliCRSP13D$form_type == 'SC 13D/A'] <- NA
+MilliCRSP13D$filer_id[MilliCRSP13D$form_type == 'SC 13D/A'] <- NA
+MilliCRSP13D$filed_as_of_date[MilliCRSP13D$form_type == 'SC 13D/A'] <- NA
+MilliCRSP13D$HedgeFund[MilliCRSP13D$form_type == 'SC 13D/A'] <- NA
+
 
 #check if it worked by deleting rows if event_date is NA
-test<-subset(MilliCRSP13D2,!is.na(event_date))
+test<-subset(MilliCRSP13D,!is.na(event_date))
 #looks good
 rm(test)
 
@@ -144,17 +150,17 @@ gc()
 
 # MilliCRSP13D2<-MilliCRSP13D2%>%
 #   mutate(absmroibvol=abs(mroibvol))
+head(MilliCRSP13D)
 
-MilliCRSP13D3<-subset(MilliCRSP13D2,select=c(PERMNO, DATE, event_date,absmroibvol))
+MilliCRSP13D3<-subset(MilliCRSP13D,select=c(PERMNO, DATE,RET,CUSIP, event_date,MarketCap, mroibvol,stock_id, filer_id, HedgeFund))
 MilliCRSP13D3<-MilliCRSP13D3[!duplicated(MilliCRSP13D3),]
-rm(MilliCRSP13D2)
 gc()
 
 ###################################################################################################
 ####################SAVE DATA AND RUN WITH FRESH WINDOW FOR RAM##########################
 ###################################################################################################
-#write.csv(MilliCRSP13D3,"C:/Users/user/Desktop/HedgeFund_Retail_GitDeskTop/MilliCRSP13D3.csv", row.names = FALSE )
-MilliCRSP13D3<-fread("C:/Users/user/Desktop/HedgeFund_Retail_GitDeskTop/MilliCRSP13D3.csv")
+write.csv(MilliCRSP13D3,"C:/Users/user/Desktop/HedgeFund_Retail_GitDeskTop/MilliCRSP13D3.csv", row.names = FALSE )
+#MilliCRSP13D3<-fread("C:/Users/user/Desktop/HedgeFund_Retail_GitDeskTop/MilliCRSP13D3.csv")
 
 
 test<-subset(MilliCRSP13D3,!is.na(event_date))
