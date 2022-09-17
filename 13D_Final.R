@@ -140,22 +140,22 @@ library(lubridate)
 ####################SAVE DATA AND RUN WITH FRESH WINDOW FOR RAM##########################
 ###################################################################################################
 #write.csv(MilliCRSP13D3,"C:/Users/user/Desktop/HedgeFund_Retail_GitDeskTop/MilliCRSP13D3.csv", row.names = FALSE )
-MilliCRSP13D3<-fread("C:/Users/user/Desktop/HedgeFund_Retail_GitDeskTop/MilliCRSP13D3.csv")
+MilliCRSP13D<-fread("C:/Users/user/Desktop/HedgeFund_Retail_GitDeskTop/MilliCRSP13D.csv")
+MilliCRSP13D<-MilliCRSP13D[!duplicated(MilliCRSP13D),]
 
-
-test<-subset(MilliCRSP13D3,!is.na(event_date))
+test<-subset(MilliCRSP13D,!is.na(event_date))
 #rm(test)
 head(MilliCRSP13D3)
 
-out <- MilliCRSP13D3 %>%
+out <- MilliCRSP13D %>%
   mutate(rn = row_number()) %>% 
   filter(complete.cases(event_date)) %>% 
   rowwise %>%
-  mutate(order = list(-20:20), rn = list(rn + order)) %>%
+  mutate(order = list(-14:14), rn = list(rn + order)) %>%
   ungroup %>%
   unnest(where(is.list)) %>% 
-  mutate(across(c("PERMNO", "DATE","RET","CUSIP", "event_date","MarketCap", "mroibvol","stock_id","filer_id", "HedgeFund"),
-                ~ MilliCRSP13D3[[cur_column()]][rn])) %>% 
+  mutate(across(c("PERMNO", "DATE","RET","CUSIP", "event_date","MarketCap", "mroibvol","stock_id","aggregate_shares","filer_id", "HedgeFund"),
+                ~ MilliCRSP13D[[cur_column()]][rn])) %>% 
   select(-rn) %>% 
   mutate(event_date = case_when(order == 0 ~ event_date))
 
@@ -173,10 +173,9 @@ out <- MilliCRSP13D3 %>%
 #   mutate(event_date = case_when(order == 0 ~ event_date))
 
 out<-out%>%
-  mutate(group_number=rep(1:4632, each=41))
+  mutate(group_number=rep(1:nrow(test), each=29))
 
-
-
+write.csv(out,"C:/Users/user/Desktop/HedgeFund_Retail_GitDeskTop/Sep17_13D.csv", row.names = FALSE )
 
 
 

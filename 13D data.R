@@ -24,13 +24,15 @@ library(lubridate)
 
 #########################################
 d13<-fread("C:/Users/user/Desktop/WhaleWisdom/13D 2010-2021.csv")
+MilliCRSP<-fread("C:/Users/user/Desktop/WhaleWisdom/MilliCRSP 2010-2021.csv")
 #colnames(d13)[21]<-"filer name"
 names(d13)[names(d13) == 'cusip_number'] <- 'CUSIP'
 d13<- d13%>%
   mutate(CUSIP=substr(CUSIP,1,8))
 head(d13)
 
-d13<-subset(d13,select=c(stock_id, filer_id, form_type, CUSIP, filed_as_of_date, event_date, HedgeFund))
+d13<-subset(d13,select=c(stock_id, filer_id, form_type, CUSIP, filed_as_of_date, event_date, aggregate_shares,HedgeFund))                     
+d13<-d13[!d13$form_type== 'SC 13D/A']
 
 #GET MARKET CAP FROM MILLI
 MilliCRSP<-MilliCRSP%>%
@@ -48,10 +50,27 @@ d13<-d13%>%
 d13<-d13%>%
   mutate(DATE=as.numeric(d13$DATE))
 #########################################
-MilliCRSP13D$event_date[MilliCRSP13D$form_type == 'SC 13D/A'] <- NA
 
-D13only<-d13[!d13$form_type== 'SC 13D/A']
-              
+#BETTER TO USE JOIN FUNCTIONS FROM DPLYR THAN THE MERGE. 
+MilliCRSP13D<-left_join(MilliCRSP,d13,by=c('CUSIP','DATE'))
+
+MilliCRSP13D<-MilliCRSP13D%>%
+  mutate(event_date=format(event_date, "%Y%m%d"))
+MilliCRSP13D<-MilliCRSP13D%>%
+  mutate(event_date=as.Date(event_date, "%Y%m%d"))
+
+MilliCRSP13D<-MilliCRSP13D%>%
+  mutate(DATE=as.Date(as.character(DATE),format="%Y%m%d"))
+
+
+MilliCRSP13D<-subset(MilliCRSP13D,select=c(PERMNO, DATE,RET,CUSIP,stock_id, filer_id, event_date,MarketCap,aggregate_shares, mroibvol, HedgeFund))
+MilliCRSP13D<-MilliCRSP13D[!duplicated(MilliCRSP13D),]
+
+###################################################################################################
+####################SAVE DATA AND RUN WITH FRESH WINDOW FOR RAM##########################
+###################################################################################################
+write.csv(MilliCRSP13D,"C:/Users/user/Desktop/HedgeFund_Retail_GitDeskTop/MilliCRSP13D.csv", row.names = FALSE )
+#MilliCRSP13D3<-fread("C:/Users/user/Desktop/HedgeFund_Retail_GitDeskTop/MilliCRSP13D3.csv")
 
 
 

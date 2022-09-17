@@ -36,7 +36,7 @@ d13<- d13%>%
   mutate(CUSIP=substr(CUSIP,1,8))
 head(d13)
 
-d13<-subset(d13,select=c(stock_id, filer_id, form_type, CUSIP, filed_as_of_date, event_date, HedgeFund))
+d13<-subset(d13,select=c(stock_id, filer_id, form_type, CUSIP, filed_as_of_date, event_date, aggregate_shares,HedgeFund))                     
 
 #GET MARKET CAP FROM MILLI
 MilliCRSP<-MilliCRSP%>%
