@@ -12,7 +12,7 @@ library(data.table)
 # library(stringr)
 # library(slider)
 library(ggplot2)
-#library(zoo)
+library(zoo)
 #library(sandwich)
 library(lubridate)
 # require(foreign)
@@ -140,48 +140,136 @@ library(lubridate)
 ####################SAVE DATA AND RUN WITH FRESH WINDOW FOR RAM##########################
 ###################################################################################################
 #write.csv(MilliCRSP13D3,"C:/Users/user/Desktop/HedgeFund_Retail_GitDeskTop/MilliCRSP13D3.csv", row.names = FALSE )
-MilliCRSP13D<-fread("C:/Users/user/Desktop/HedgeFund_Retail_GitDeskTop/MilliCRSP13D.csv")
-MilliCRSP13D<-MilliCRSP13D[!duplicated(MilliCRSP13D),]
-
-test<-subset(MilliCRSP13D,!is.na(event_date))
-#rm(test)
-head(MilliCRSP13D3)
-
-out <- MilliCRSP13D %>%
-  mutate(rn = row_number()) %>% 
-  filter(complete.cases(event_date)) %>% 
-  rowwise %>%
-  mutate(order = list(-14:14), rn = list(rn + order)) %>%
-  ungroup %>%
-  unnest(where(is.list)) %>% 
-  mutate(across(c("PERMNO", "DATE","RET","CUSIP", "event_date","MarketCap", "mroibvol","stock_id","aggregate_shares","filer_id", "HedgeFund"),
-                ~ MilliCRSP13D[[cur_column()]][rn])) %>% 
-  select(-rn) %>% 
-  mutate(event_date = case_when(order == 0 ~ event_date))
-
-
-# out2 <- MilliCRSP13D3 %>%
+# MilliCRSP13D<-fread("C:/Users/user/Desktop/HedgeFund_Retail_GitDeskTop/MilliCRSP13D.csv")
+# MilliCRSP13D<-MilliCRSP13D[!duplicated(MilliCRSP13D),]
+# 
+# test<-subset(MilliCRSP13D,!is.na(event_date))
+# #rm(test)
+# head(MilliCRSP13D3)
+# 
+# out <- MilliCRSP13D %>%
 #   mutate(rn = row_number()) %>% 
 #   filter(complete.cases(event_date)) %>% 
 #   rowwise %>%
-#   mutate(order = list(-3:3), rn = list(rn + order)) %>%
+#   mutate(order = list(-14:14), rn = list(rn + order)) %>%
 #   ungroup %>%
 #   unnest(where(is.list)) %>% 
-#   mutate(across(c("DATE", "event_date", "mroibvol"),
-#                 ~ MilliCRSP13D3[[cur_column()]][rn])) %>% 
+#   mutate(across(c("PERMNO", "DATE","RET","CUSIP", "event_date","MarketCap", "mroibvol","stock_id","aggregate_shares","filer_id", "HedgeFund"),
+#                 ~ MilliCRSP13D[[cur_column()]][rn])) %>% 
 #   select(-rn) %>% 
 #   mutate(event_date = case_when(order == 0 ~ event_date))
+# 
+# 
+# # out2 <- MilliCRSP13D3 %>%
+# #   mutate(rn = row_number()) %>% 
+# #   filter(complete.cases(event_date)) %>% 
+# #   rowwise %>%
+# #   mutate(order = list(-3:3), rn = list(rn + order)) %>%
+# #   ungroup %>%
+# #   unnest(where(is.list)) %>% 
+# #   mutate(across(c("DATE", "event_date", "mroibvol"),
+# #                 ~ MilliCRSP13D3[[cur_column()]][rn])) %>% 
+# #   select(-rn) %>% 
+# #   mutate(event_date = case_when(order == 0 ~ event_date))
+# 
+# out<-out%>%
+#   mutate(group_number=rep(1:nrow(test), each=29))
+# 
+# write.csv(out,"C:/Users/user/Desktop/HedgeFund_Retail_GitDeskTop/Sep17_13D.csv", row.names = FALSE )
 
-out<-out%>%
-  mutate(group_number=rep(1:nrow(test), each=29))
+output<-fread("C:/Users/user/Desktop/HedgeFund_Retail_GitDeskTop/Sep17_13D.csv")
 
-write.csv(out,"C:/Users/user/Desktop/HedgeFund_Retail_GitDeskTop/Sep17_13D.csv", row.names = FALSE )
+length(unique(output$group_number))
+#there are 4634 13D events in this table.
+
+#sum order imbalances of previous -14 and post 14 days around event date. only leave the -1:1 dates.
+output <- output %>% 
+  mutate(order_id = ifelse(order == 0, NA, order < 0)) %>%
+  group_by(`group_number`, order_id) %>%
+  mutate(sum_imbalance = ifelse(order == 0, NA, sum(mroibvol)))%>%
+  filter(order %in% -1:1)
+
+#for ease of computation next step, fill up the NA values on -1 and +1 rows from the eventdate.
+output <- output %>% 
+  group_by(group_number)%>%
+  fill(c(stock_id, filer_id, event_date, aggregate_shares, HedgeFund), .direction = 'downup')
+
+#remove rows on the eventdates
+output<-output%>%
+  drop_na(sum_imbalance)
+
+#make a new column that indicates if imbalance is larger after the event date
+output<-setDT(output)[, status := sum_imbalance[order_id=="FALSE"]>sum_imbalance[order_id=="TRUE"], by = group_number]
+
+#make a new table called Himbalance(Higher Imbalance) that contains 13D event that is related to increase in retail order imbalance
+Himbalance<-output%>%
+  filter(status=="TRUE")
+
+length(unique(Himbalance$group_number))
+#there are 2198 
+
+#make a new table called Limbalance(Lower Imbalance) that contains 13D event that is related to increase in retail order imbalance
+Limbalance<-output%>%
+  filter(status=="FALSE")
+
+length(unique(Limbalance$group_number))
+#there are 2436
+
+#see what characteristics that had higher imbalance have
 
 
 
 
+
+
+
+
+
+
+
+
+
+test<-output[1:58,]
+a<-which(is.na(test$event_date) == FALSE)-14
+b<-which(is.na(test$event_date) == FALSE)-1
+c<-which(is.na(test$event_date) == FALSE)+1
+d<-which(is.na(test$event_date) == FALSE)+14
+
+test2<-test%>%
+  group_by(group_number)%>%
+  mutate(sumvalue=ifelse(order<0, sum(mroibvol[a:b], ifelse(order>0, sum(mroibvol[c:d],NA)))))
+
+         
+rowwise()%>%
+         
+         
+         
+         
+         
+test<-output[1:29,]
+test
+test$sums <- rollsumr(test$mroibvol, k = 3, fill = NA)
+rowSums(test$mroibvol[event_date:167])
+
+
+
+
+
+
+
+
+which(is.na(test$event_date) == FALSE)
+
+a<-which(is.na(test$event_date) == FALSE)-14
+b<-which(is.na(test$event_date) == FALSE)-0
+c<-which(is.na(test$event_date) == FALSE)+14
+test2<-test%>%
+  mutate(previous)=rowSums(test$mroibvol[a:b]
   
-  
+
+
+
+rm(res)
 
 
 
