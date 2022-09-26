@@ -17,7 +17,7 @@ library(zoo)
 library(lubridate)
 # require(foreign)
 # require(lmtest)
-# library(epiDisplay)
+library(epiDisplay)
 # library(vtable)
 # library(skimr)
 #library(scales)
@@ -177,6 +177,7 @@ library(lubridate)
 # 
 # write.csv(out,"C:/Users/user/Desktop/HedgeFund_Retail_GitDeskTop/Sep17_13D.csv", row.names = FALSE )
 
+#Simply Begin from here
 output<-fread("C:/Users/user/Desktop/HedgeFund_Retail_GitDeskTop/Sep17_13D.csv")
 
 length(unique(output$group_number))
@@ -216,10 +217,86 @@ length(unique(Limbalance$group_number))
 #there are 2436
 
 #see what characteristics that had higher imbalance have
+tab1(Himbalance$HedgeFund, sort.group = "decreasing", cum.percent = TRUE)
+#Among Himbalance 1518=(3036/2) are not hedge fund. 680=(1360/2) are hedge fund.
+
+tab1(Limbalance$HedgeFund, sort.group = "decreasing", cum.percent = TRUE)
+#Among Limbalance 1667(3334/2) are not hedge fund. 769=(1538/2) are hedge fund.
+
+1518/(1518+680)
+#Among the 13D events that resulted in increased OIB, 69% of the funds are not hedgefund.
+#31% are hedge fund. (Note that 68.7% of the events are not hedgefund so the ratio tells us it didn't matter whether it was hedge fund or not.)
+1667/(1667+769)
+#Among the 13D events that resulted in decreased OIB, 68.4% of the funds are not hedgefund.
+#likewise, the ratio tells us it didn't matter whether it was hedge fund or not.
+
+#compare AGG shares on average
+mean(Himbalance$aggregate_shares)
+mean(Limbalance$aggregate_shares)
+#On average, Himbalance has higher aggregate shares
+
+#compare Size on average
+mean(Himbalance$MarketCap)
+mean(Limbalance$MarketCap)
+#on average, Himbalance has higher marketcap companies.(makes sense higher firms will be followed more)
+
+#does hedge fund deals more with high marketcap firms?
+Hedgefund<-output%>%
+  filter(HedgeFund=="Yes")
+length(unique(Hedgefund$group_number))
+#1544 out of 4634 13D events are from hedge funds
+
+mean(Hedgefund$MarketCap)
+#firms that Hedgefund bought has marketcap similar to Limbalance. so Hedge fund doesn't necessarily deal with large firms.
+
+###what are well known hedgefunds?
+#how many different filers are there for the hedge fund 13D filing
+length(unique(Hedgefund$filer_id))
+#among the 1544 hedge fund 13D filing, there are 381 unique filers.
+
+#########################################################STRANGE THING HAPPENED HERE#############################################
+#import list of large hedgefund firms along with the filer Id 
+Famous<-fread("C:/Users/user/Desktop/HedgeFund_Retail_GitDeskTop/ListofHF.csv")
+
+Famouslist<-pull(Famous,filer_id)
+FamousHedgefund<-Hedgefund%>%
+  filter(filer_id %in% Famouslist)
+length(unique(FamousHedgefund$filer_id))
+#only 2 hedge funds among 18?
+
+FamousHimbalance<-Himbalance%>%
+  filter(filer_id %in% Famouslist)
+length(unique(FamousHimbalance$filer_id))
+
+Famouslimbalance<-Limbalance%>%
+  filter(filer_id %in% Famouslist)
+length(unique(Famouslimbalance$filer_id))
 
 
 
 
+
+
+ check<-output%>%
+  filter(filer_id %in% Famouslist)
+length(unique(check$filer_id))
+#only 6 here. Apparently, 4 out of 6 is hedge fund but not regarded as hedgefund here.
+
+#d13 file had all the filer_id in the list. why do I not all of those filings over here?
+#let's see what those firms bought
+d13<-fread("C:/Users/user/Desktop/WhaleWisdom/13D 2010-2021.csv")
+FamousHedgefund13D<-d13%>%
+  filter(filer_id %in% Famouslist)
+length(unique(FamousHedgefund13D$filer_id))
+#ok 18 here.
+FamousHedgefund13D<-FamousHedgefund13D%>%
+  filter(form_type=="SC 13D")
+length(unique(FamousHedgefund13D$filer_id))
+verify<-subset(FamousHedgefund13D,select=c(filer_id,filer_name,HedgeFund))
+# 17 HERE.
+
+
+#########################################################STRANGE THING HAPPENED#############################################
 
 
 
