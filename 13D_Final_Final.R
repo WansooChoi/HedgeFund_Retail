@@ -37,8 +37,39 @@ MilliCRSP<-subset(MilliCRSP,select=c(PERMNO, DATE, TICKER, PRC, RET, CUSIP, Mark
 length(unique(MilliCRSP$PERMNO))
 
 ########################################################################################
-#Activist
+#13D
+names(d13)[names(d13) == 'cusip_number'] <- 'CUSIP'
+d13<- d13%>%
+  mutate(CUSIP=substr(CUSIP,1,8))
+head(d13)
+
+d13<-subset(d13,select=c(stock_id, filer_id, form_type, CUSIP, filed_as_of_date, event_date,aggregate_shares,filer_name, HedgeFund))
+d13<-d13[d13$form_type != 'SC 13D/A', ]
+
+#LEFTJOIN 13D to MILLICRSP
+#first unify all the date related variables into yyyymmdd format
+d13<-d13%>%
+  mutate(DATE=format(d13$event_date, "%Y%m%d"))%>%
+  mutate(filed_as_of_date=format(d13$filed_as_of_date, "%Y%m%d"))%>%
+  mutate(event_date=format(d13$event_date, "%Y%m%d"))
+
+d13<-d13%>%
+  mutate(DATE=as.numeric(d13$DATE))%>%
+  mutate(filed_as_of_date=as.numeric(d13$filed_as_of_date))%>%
+  mutate(event_date=as.numeric(d13$event_date))
+
+MilliCRSP13D<-left_join(MilliCRSP,d13,by=c('CUSIP','DATE'))
+
+#check how many 13D events are there after left joinging 13d to Millicrsp
+MilliCRSP13D_No_NA<-MilliCRSP13D%>%
+  drop_na(event_date)
+head(MilliCRSP13D_No_NA)
+#there are 4993 13D events
+
+########################################################################################
+#JOIN ActivistHF
 head(ActivistHF)
+names(ActivistHF)[names(ActivistHF) == 'Fund Name'] <- 'activist_fund_name'
 names(ActivistHF)[names(ActivistHF) == 'DateCross5pct'] <- 'event_date'
 names(ActivistHF)[names(ActivistHF) == 'Permno'] <- 'PERMNO'
 names(ActivistHF)[names(ActivistHF) == 'Date13D'] <- 'filed_as_of_date'
@@ -46,15 +77,32 @@ names(ActivistHF)[names(ActivistHF) == 'Date13D'] <- 'filed_as_of_date'
 ActivistHF<-ActivistHF%>%
   mutate(HedgeFund="Yes")
 
-# ActivistHF<-ActivistHF%>%
-#   mutate(DATE=as.Date(as.character(event_date),format="%Y%m%d"))
 ActivistHF<-ActivistHF%>%
   mutate(DATE=event_date)
 
-#this is a better way to leftjoin. automatically joins by common factors: permno and date
-MilliCRSP_Act<-MilliCRSP %>% left_join(ActivistHF)
+ActivistHF<-subset(ActivistHF,select=c(activist_fund_name,PERMNO, filed_as_of_date, event_date, HedgeFund, DATE))
+head(ActivistHF)
+head(MilliCRSP13D_No_NA)
+#leftjoin
+MilliCRSP13D_ACT<-left_join(MilliCRSP13D,ActivistHF,by=c('PERMNO','DATE'))
+head(MilliCRSP13D_ACT)
 
-MilliCRSP_Act_No_NA<-MilliCRSP_Act%>%
+#combine .x and .y columns 
+MilliCRSP13D_ACT<-MilliCRSP13D_ACT %>%
+  mutate(event_date = pmax(event_date.x, event_date.y, na.rm = TRUE))%>%
+  mutate(filed_as_of_date = pmax(filed_as_of_date.x, filed_as_of_date.y, na.rm = TRUE))%>%
+  mutate(HedgeFund = pmax(HedgeFund.x, HedgeFund.y, na.rm = TRUE))%>%
+  mutate(filer_name= pmax(filer_name,activist_fund_name,na.rm=TRUE))%>%
+  mutate(Activist = ifelse(is.na(activist_fund_name)==TRUE,'No','Yes'))
+
+MilliCRSP13D_ACT<-subset(MilliCRSP13D_ACT,select = -c(event_date.x,event_date.y,filed_as_of_date.x,filed_as_of_date.y,HedgeFund.x, HedgeFund.y, activist_fund_name))
+
+MilliCRSP13D_ACT_No_NA<-MilliCRSP13D_ACT%>%
+  drop_na(event_date)
+
+#until here is perfect.
+
+MilliCRSP13D_ACT_No_NA<-MilliCRSP13D_ACT%>%
   drop_na(event_date)
 #there are 985 obs for this.
 rm(MilliCRSP_Act_No_NA)
@@ -93,18 +141,37 @@ MilliCRSP_Act<-MilliCRSP_Act%>%
   mutate(filed_as_of_date=as.numeric(MilliCRSP_Act$filed_as_of_date))%>%
   mutate(event_date=as.numeric(MilliCRSP_Act$event_date))
 
-#BETTER TO USE JOIN FUNCTIONS FROM DPLYR THAN THE MERGE.
-#MilliCRSP13D<-left_join(MilliCRSP_Act,d13,by=c('CUSIP','DATE'))
 
-MilliCRSP13D<-MilliCRSP_Act %>% left_join(d13)
-head(MilliCRSP13D)
+
+
+
+
+
+
+#BETTER TO USE JOIN FUNCTIONS FROM DPLYR THAN THE MERGE.
+# MilliCRSP13D_by<-left_join(MilliCRSP_Act,d13,by=c('CUSIP','DATE'))
+# head(MilliCRSP13D_by)
+# 
+# MilliCRSP13D<-MilliCRSP_Act %>% left_join(d13)
+# head(MilliCRSP13D)
+# 
+# MilliCRSP13D_by_No_NA1<-MilliCRSP13D_by%>%
+#   drop_na(event_date.x)
+# MilliCRSP13D_by_No_NA2<-MilliCRSP13D_by%>%
+#   drop_na(event_date.y)
+
+MilliCRSP13D<-left_join(MilliCRSP,d13,by=c('CUSIP','DATE'))
+MilliCRSP13D_No_NA<-MilliCRSP13D%>%
+  drop_na(event_date)
+head(MilliCRSP13D_No_NA)
+
 
 #write.csv(MilliCRSP13D,"C:/Users/user/Desktop/HedgeFund_Retail_GitDeskTop/MilliCRSP13D_OCT2.csv", row.names = FALSE )
 
 ########################################################################################
 ########################            RUN BELOW            ###############################
 ########################################################################################
-#OCT 3 2:40AM begin here.
+
 MilliCRSP13D<-fread("C:/Users/user/Desktop/HedgeFund_Retail_GitDeskTop/MilliCRSP13D_OCT2.csv")
 
 MilliCRSP13D2<-MilliCRSP13D%>%
