@@ -309,8 +309,10 @@ head(sample)
 #now we have expanded the excess returns pre post 14 days for evey day.
 #merge this back to Millicrsp13D_ACT_NO_NA
 #load basefile first and then load sample file
-rm(MilliCRSP13D_ACT_onlyNA,MilliCRSP13D_ACT_No_NA_HF,MilliCRSP13D_ACT)
+rm(MilliCRSP13D_ACT_onlyNA,MilliCRSP13D_ACT)
 
+######################pick one from the below two######################
+######################try with all funds######################
 setDT(MilliCRSP13D_ACT_No_NA)
 setDT(sample)
 MilliCRSP13D_ACT_No_NA$RET<-as.numeric(MilliCRSP13D_ACT_No_NA$RET)
@@ -319,11 +321,23 @@ MilliCRSP13D_ACT_No_NA<-MilliCRSP13D_ACT_No_NA%>%
 
 MilliCRSP13D_ACT_No_NA[sample, on = .(PERMNO,DATE), names(sample)[5:33] := mget(paste0("i.", names(sample)[5:33]))]
 head(MilliCRSP13D_ACT_No_NA)
-
 rm(sample)
 
+#######################try with hedge funds only######################
+setDT(MilliCRSP13D_ACT_No_NA_HF)
+setDT(sample)
+MilliCRSP13D_ACT_No_NA_HF$RET<-as.numeric(MilliCRSP13D_ACT_No_NA_HF$RET)
+MilliCRSP13D_ACT_No_NA_HF<-MilliCRSP13D_ACT_No_NA_HF%>%
+  drop_na(RET)
+
+MilliCRSP13D_ACT_No_NA_HF[sample, on = .(PERMNO,DATE), names(sample)[5:33] := mget(paste0("i.", names(sample)[5:33]))]
+head(MilliCRSP13D_ACT_No_NA_HF)
+
+rm(sample)
+#####################################################################
+
 ####PLOT####
-plotsample<-MilliCRSP13D_ACT_No_NA[,24:52]
+plotsample<-MilliCRSP13D_ACT_No_NA_HF[,24:52]
 head(plotsample)
 plotsample<-colMeans(plotsample) 
 plotsample<-data.table(plotsample)
