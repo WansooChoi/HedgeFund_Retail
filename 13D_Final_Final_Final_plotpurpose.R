@@ -3,19 +3,20 @@
 #library(plyr) do not use plyr with dplyr
 library(dplyr)
 #library(purrr)
-library(tidyr)
+#library(tidyr)
 library(tidyverse)
-library(sqldf)
+#library(sqldf)
 #library(readr)
 library(data.table)
+
 # library(DataCombine)
 # library(functional)
 # library(stringr)
-# library(slider)
+#library(slider)
 library(ggplot2)
-library(zoo)
+#library(zoo)
 #library(sandwich)
-library(lubridate)
+#library(lubridate)
 # require(foreign)
 # require(lmtest)
 library(epiDisplay)
@@ -23,146 +24,148 @@ library(epiDisplay)
 # library(skimr)
 #library(scales)
 
-#########SKIP THIS PART UNTIL RUN BELOW#########
-
-d13<-fread("C:/Users/user/Desktop/WhaleWisdom/13D 2010-2021.csv")
-MilliCRSP<-fread("C:/Users/user/Desktop/WhaleWisdom/MilliCRSP 2010-2021.csv")
-ActivistHF<-fread("C:/Users/user/Desktop/Prof Juha/HFA_1994_2016 for Juha.csv")
-########################################################################################
-#GET MARKET CAP FROM MILLI
-MilliCRSP<-MilliCRSP%>%
-  group_by(PERMNO)%>%
-  mutate(MarketCap=PRC*SHROUT)
-
-#use only things we need
-MilliCRSP<-subset(MilliCRSP,select=c(PERMNO, DATE, TICKER, PRC, RET, CUSIP, MarketCap, mroibtrd, mroibvol))
-length(unique(MilliCRSP$PERMNO))
-
-########################################################################################
-#13D
-names(d13)[names(d13) == 'cusip_number'] <- 'CUSIP'
-d13<- d13%>%
-  mutate(CUSIP=substr(CUSIP,1,8))
-head(d13)
-
-d13<-subset(d13,select=c(stock_id, filer_id, form_type, CUSIP, filed_as_of_date, event_date,aggregate_shares,filer_name, HedgeFund))
-d13<-d13[d13$form_type != 'SC 13D/A', ]
-
-#LEFTJOIN 13D to MILLICRSP
-#first unify all the date related variables into yyyymmdd format
-d13<-d13%>%
-  mutate(DATE=format(d13$event_date, "%Y%m%d"))%>%
-  mutate(filed_as_of_date=format(d13$filed_as_of_date, "%Y%m%d"))%>%
-  mutate(event_date=format(d13$event_date, "%Y%m%d"))
-
-d13<-d13%>%
-  mutate(DATE=as.numeric(d13$DATE))%>%
-  mutate(filed_as_of_date=as.numeric(d13$filed_as_of_date))%>%
-  mutate(event_date=as.numeric(d13$event_date))
-
-MilliCRSP13D<-left_join(MilliCRSP,d13,by=c('CUSIP','DATE'))
-
-#check how many 13D events are there after left joinging 13d to Millicrsp
-MilliCRSP13D_No_NA<-MilliCRSP13D%>%
-  drop_na(event_date)
-head(MilliCRSP13D_No_NA)
-#there are 4993 13D events
-
-########################################################################################
-#JOIN ActivistHF
-head(ActivistHF)
-names(ActivistHF)[names(ActivistHF) == 'Fund Name'] <- 'activist_fund_name'
-names(ActivistHF)[names(ActivistHF) == 'DateCross5pct'] <- 'event_date'
-names(ActivistHF)[names(ActivistHF) == 'Permno'] <- 'PERMNO'
-names(ActivistHF)[names(ActivistHF) == 'Date13D'] <- 'filed_as_of_date'
-
-ActivistHF<-ActivistHF%>%
-  mutate(HedgeFund="Yes")
-
-ActivistHF<-ActivistHF%>%
-  mutate(DATE=event_date)
-
-ActivistHF<-subset(ActivistHF,select=c(activist_fund_name,PERMNO, filed_as_of_date, event_date, HedgeFund, DATE))
-head(ActivistHF)
-head(MilliCRSP13D_No_NA)
-#leftjoin
-MilliCRSP13D_ACT<-left_join(MilliCRSP13D,ActivistHF,by=c('PERMNO','DATE'))
-head(MilliCRSP13D_ACT)
-
-#combine .x and .y columns 
-MilliCRSP13D_ACT<-MilliCRSP13D_ACT %>%
-  mutate(event_date = pmax(event_date.x, event_date.y, na.rm = TRUE))%>%
-  mutate(filed_as_of_date = pmax(filed_as_of_date.x, filed_as_of_date.y, na.rm = TRUE))%>%
-  mutate(HedgeFund = pmax(HedgeFund.x, HedgeFund.y, na.rm = TRUE))%>%
-  mutate(filer_name= pmax(filer_name,activist_fund_name,na.rm=TRUE))%>%
-  mutate(Activist = ifelse(is.na(activist_fund_name)==TRUE,'No','Yes'))
-
-MilliCRSP13D_ACT<-subset(MilliCRSP13D_ACT,select = -c(event_date.x,event_date.y,filed_as_of_date.x,filed_as_of_date.y,HedgeFund.x, HedgeFund.y, activist_fund_name))
-
-MilliCRSP13D_ACT_No_NA<-MilliCRSP13D_ACT%>%
-  drop_na(event_date)
-
-rm(MilliCRSP,MilliCRSP13D,MilliCRSP13D_No_NA,d13,ActivistHF)
-#until here is perfect.
-#there are 5326 13-d events 
-
-#write.csv(MilliCRSP13D_ACT,"C:/Users/user/Desktop/HedgeFund_Retail_GitDeskTop/MilliCRSP13D_Act_OCT8.csv", row.names = FALSE )
-
-#UNTIL HERE IS PERFECT PERFECT PERFECT
-
-########################################################################################
-########################   SKIP TO THE NEXT RUN BELOW    ###############################
-########################################################################################
-MilliCRSP13D_ACT<-fread("C:/Users/user/Desktop/HedgeFund_Retail_GitDeskTop/MilliCRSP13D_Act_OCT8.csv")
-########################################################################################
-
-MilliCRSP13D_ACT<-MilliCRSP13D_ACT[!duplicated(MilliCRSP13D_ACT),]
-#10910024->10765872    there were 144152 duplicates...?   
-MilliCRSP13D_ACT_No_NA<-MilliCRSP13D_ACT%>%
-  drop_na(event_date)
-#after removing duplicates, there are 4968 13-d events identified
-
-#add event_number to distinguish
-MilliCRSP13D_ACT_test<-MilliCRSP13D_ACT%>%
-  mutate(event_number=ifelse(event_date==!is.na(event_date),NA,cumsum(!is.na(event_date))))
-
-MilliCRSP13D_ACT_test_No_NA<-MilliCRSP13D_ACT_test%>%
-  drop_na(event_date)
-
-#############OCT 09 5AM  I have created a new way to find a solution.....
-#############run library, fread above and above codes. begin from here
-
-#THIS IS WRONG
-# DON'T GET RID OF MULTIPLE EVENT DATE ON SAME DAY. I LOSE TOO MANY OBSERVATIONS
-# #WARNING!!!!WARNING!!!WARNING!!!WARNING!!!!!!
-# #some cases, there are multiple filers acquired stocks at the same event-date and this is causing compuational challenges. I will first
-# #pick only one firm on one event date.
-# MilliCRSP13D_ACT_test<-MilliCRSP13D_ACT%>%
-#   group_by(PERMNO)%>%
-#   distinct(DATE,.keep_all = TRUE)
-# 
-# MilliCRSP13D_ACT_test_No_NA<-MilliCRSP13D_ACT_test%>%
-#   drop_na(event_date)
-# #observation drops from 4968 to 4102 (866 13D events)
-
-#write.csv(MilliCRSP13D_ACT_test,"C:/Users/user/Desktop/HedgeFund_Retail_GitDeskTop/MilliCRSP13D_ACT_test_OCT8.csv", row.names = FALSE )
+#
+#load following table
+#SetofDataBeforeBuyHoldReturn
 
 
-#RETURN HERE OCT 8 11PM
-#####################################SKIP FOR NOW##################################################
+########################################################################################################################################################################
+##NOV17 modification
+sample<-subset(MilliCRSP13D_ACT,select=c(PERMNO,DATE,RET))
+sample$RET<-as.numeric((sample$RET))
+sample$DATE<-as.numeric((sample$DATE))
+
+#####subtract Fama French mkt return.
+FF<-fread("C:/Users/user/Desktop/HedgeFund_Retail_GitDeskTop/FamaFrench.csv")
+#date range 20100104 ~ 20211223
+which(FF == 20100104, arr.ind=TRUE)
+which(FF == 20211231, arr.ind=TRUE)
+FF<-FF[22128:25148,]
+head(FF)
+tail(FF)
+FF<-FF[,c(1,2,5)]
+FF$`Mkt-RF`<-FF$`Mkt-RF`/100
+FF$RF<-FF$RF/100
+FF<-FF%>%mutate(Mkt=`Mkt-RF`+RF)
+FF<-FF[,c(1,4)]
+head(FF)
+tail(FF)
+FF$DATE<-as.numeric((FF$DATE))
+
+#merge maret return in sample
+sample[FF, on = c('DATE'), Mkt:=i.Mkt]
+head(sample)
+
+#get excess return
+sample<-sample%>%mutate(mMkt=-Mkt)
+sample<-sample%>%
+  mutate(excret=rowSums(sample[,c(3,5)],na.rm = TRUE))
+head(sample)
+
+sample<-sample%>%mutate(logret=log(excret+1))
+head(sample)
+sample<-subset(sample,select = c(1,2,3,7))
+
+rm(MilliCRSP13D_ACT_onlyNA,MilliCRSP13D_ACT_No_NA_HF,MilliCRSP13D_ACT_No_NA,MilliCRSP13D_ACT,FF)
+#sample<-sample[,paste0("bhr",-14) := sum(colSums(sample[,5:(20-14)]))]
+
+for(i in 15:-14) {
+  sample<-sample[, paste0("dm",i) := shift(logret, i)]
+}
+
+for(i in -14:14) {
+  sample[[paste0("bhr",i)]] <- rowSums(sample[, 5:(i+20)], na.rm = TRUE)
+}
+
+#### remember to change back to exp()-1
+sample<-subset(sample,select = -c(5:34))
+head(sample)
+
+sample[,5:33]<-exp(sample[,5:33])-1
+
+head(sample)
+#now we have expanded the excess returns pre post 14 days for evey day.
+#merge this back to Millicrsp13D_ACT_NO_NA
+#load basefile first and then load sample file
+rm(MilliCRSP13D_ACT_onlyNA,MilliCRSP13D_ACT_No_NA_HF,MilliCRSP13D_ACT)
+
+setDT(MilliCRSP13D_ACT_No_NA)
+setDT(sample)
+MilliCRSP13D_ACT_No_NA$RET<-as.numeric(MilliCRSP13D_ACT_No_NA$RET)
+MilliCRSP13D_ACT_No_NA<-MilliCRSP13D_ACT_No_NA%>%
+  drop_na(RET)
+
+MilliCRSP13D_ACT_No_NA[sample, on = .(PERMNO,DATE), names(sample)[5:33] := mget(paste0("i.", names(sample)[5:33]))]
+head(MilliCRSP13D_ACT_No_NA)
+
+rm(sample)
+
+####PLOT####
+plotsample<-MilliCRSP13D_ACT_No_NA[,24:52]
+head(plotsample)
+plotsample<-colMeans(plotsample) 
+plotsample<-data.table(plotsample)
+plotsample<-plotsample%>%
+  mutate(order=-14:14)
+head(plotsample)
+colnames(plotsample)[1] = "average buy and hold abnormal return"
+
+ggplot(data=plotsample, aes(x=order, y=`average buy and hold abnormal return`, group=1)) +
+  geom_line()+
+  geom_point()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#ignore here#ignore here#ignore here#ignore here#ignore here#ignore here#ignore here
 #trim the data
 # Below need tidyr and dplyr exclusively
-Milli_everything <- MilliCRSP13D_ACT %>%
-  mutate(rn = row_number()) %>%
-  filter(complete.cases(event_date)) %>%
-  rowwise %>%
-  mutate(order = list(-14:14), rn = list(rn + order)) %>%
-  ungroup %>%
-  unnest(where(is.list)) %>%
-  mutate(across(c("PERMNO","DATE","TICKER","PRC","RET","CUSIP","MarketCap","mroibtrd","mroibvol","form_type","aggregate_shares","event_date","filed_as_of_date"),
-                ~ MilliCRSP13D_ACT[[cur_column()]][rn])) %>%
-  select(-rn) %>%
-  mutate(event_date = case_when(order == 0 ~ event_date))
+# head(MilliCRSP13D_ACT)
+# 
+# 
+# list <- MilliCRSP13D_ACT %>%
+#   filter(complete.cases(event_number)) %>%
+#   rowwise %>%
+#   mutate(order = list(-14:14), range = list(DATE + order))%>%
+#   ungroup %>%
+#   unnest(where(is.list)) %>%
+#   subset(select=c(event_number,order,range))
+# names(list)[names(list) == 'range'] <- 'DATE'
+# 
+# list<-list%>%mutate(helper="1")
+# 
+# MilliCRSP13D_ACT_test<-left_join(MilliCRSP13D_ACT,list,by=c('event_number','DATE'))
+# MilliCRSP13D_ACT_test_No_NA<-MilliCRSP13D_ACT_test%>%
+#   drop_na(helper)
+#ignore here#ignore here#ignore here#ignore here#ignore here#ignore here
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 #4968 13-d events confirmed.
 144072/29
@@ -180,39 +183,39 @@ Milli_everything<-Milli_everything%>%
 #1. buy and hold return  2. buy and hold excess return  3. sum before and after event_date order imbalance
 ########################################################################################
 ########################            RUN BELOW            ###############################
-########################################################################################
-out<-fread("C:/Users/user/Desktop/HedgeFund_Retail_GitDeskTop/Milli_everything_trimmed_OCT8.csv")
-
-########################################################################################
-# calculate buy and hold return.
-
-#original out is pre 14:14 chopped data
-#out<-fread("C:/Users/user/Desktop/HedgeFund_Retail_GitDeskTop/MilliCRSP13D_ACT_test_OCT8.csv")
-
-out<-Milli_everything
-setDT(out)
-
-events = unique(out[!is.na(event_date),.(PERMNO,event_date)])
-
-#helper column
-events[, eDate:=event_date]
-
-#makes new column(temporary) lower and upper boundary
-out[, `:=`(s=DATE-20, e=DATE+20)]
-
-#non-equi match
-bhr = events[out, on=.(PERMNO, event_date>=s, event_date<=e), nomatch=0]
-
-#Generate the BuyHoldReturn column, by ID and EventDate
-bhr = bhr[, .(DATE, BuyHoldReturn_I=c(NA, PRC[-1]/PRC[1] -1)), by = .(PERMNO,eDate)]
-
-#merge back to get the full data
-#bhr = bhr[out,on=.(PERMNO,DATE),.(PERMNO, DATE, PRC, CUSIP, MarketCap, mroibtrd, mroibvol, stock_id, filer_id, form_type, event_date=i.event_date,BuyHoldReturn_I, aggregate_shares, HedgeFund, order)]
-out<-subset(out,select=-c(s,e))
-out<-left_join(out,bhr,by=c('PERMNO', 'DATE'))
-
-out<-out[!duplicated(out),]
-out
+# ########################################################################################
+# out<-fread("C:/Users/user/Desktop/HedgeFund_Retail_GitDeskTop/Milli_everything_trimmed_OCT8.csv")
+# 
+# ########################################################################################
+# # calculate buy and hold return.
+# 
+# #original out is pre 14:14 chopped data
+# #out<-fread("C:/Users/user/Desktop/HedgeFund_Retail_GitDeskTop/MilliCRSP13D_ACT_test_OCT8.csv")
+# 
+# out<-Milli_everything
+# setDT(out)
+# 
+# events = unique(out[!is.na(event_date),.(PERMNO,event_date)])
+# 
+# #helper column
+# events[, eDate:=event_date]
+# 
+# #makes new column(temporary) lower and upper boundary
+# out[, `:=`(s=DATE-20, e=DATE+20)]
+# 
+# #non-equi match
+# bhr = events[out, on=.(PERMNO, event_date>=s, event_date<=e), nomatch=0]
+# 
+# #Generate the BuyHoldReturn column, by ID and EventDate
+# bhr = bhr[, .(DATE, BuyHoldReturn_I=c(NA, PRC[-1]/PRC[1] -1)), by = .(PERMNO,eDate)]
+# 
+# #merge back to get the full data
+# #bhr = bhr[out,on=.(PERMNO,DATE),.(PERMNO, DATE, PRC, CUSIP, MarketCap, mroibtrd, mroibvol, stock_id, filer_id, form_type, event_date=i.event_date,BuyHoldReturn_I, aggregate_shares, HedgeFund, order)]
+# out<-subset(out,select=-c(s,e))
+# out<-left_join(out,bhr,by=c('PERMNO', 'DATE'))
+# 
+# out<-out[!duplicated(out),]
+# out
 
 
 
@@ -325,17 +328,17 @@ head(MilliCRSP13D_No_NA)
 MilliCRSP13D<-fread("C:/Users/user/Desktop/HedgeFund_Retail_GitDeskTop/MilliCRSP13D_OCT2.csv")
 
 MilliCRSP13D2<-MilliCRSP13D%>%
-     mutate(event_date.x=as.Date(as.character(event_date.x),format="%Y%m%d"))
+  mutate(event_date.x=as.Date(as.character(event_date.x),format="%Y%m%d"))
 
 # MilliCRSP13D2<-MilliCRSP13D%>%
 #   mutate(DATE=format(as.Date(event_date.y,format="%Y%m%d")))
 
 #format(as.Date(as.character(event_date.y),format="%Y%m%d"))
 
- 
+
 MilliCRSP13D2 <- MilliCRSP13D2%>%
   mutate(event_date=coalesce(event_date.x,event_date.y))
-  
+
 
 MilliCRSP13D2_Act_No_NA<-MilliCRSP13D2%>%
   drop_na(event_date.x)
@@ -351,8 +354,8 @@ df = data.frame(n, s, b) %>%
 
 
 MilliCRSP13D<-left_join(MilliCRSP %>% group_by(PERMNO, DATE) %>% mutate(id = row_number()),
-          d13 %>% group_by(DATE) %>% mutate(id = row_number()), 
-          by = c("CUIP", "DATE"))
+                        d13 %>% group_by(DATE) %>% mutate(id = row_number()), 
+                        by = c("CUIP", "DATE"))
 
 
 
@@ -641,3 +644,4 @@ verify<-subset(FamousHedgefund13D,select=c(filer_id,filer_name,HedgeFund))
 
 
 
+f
