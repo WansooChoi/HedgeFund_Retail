@@ -253,6 +253,11 @@ tab1(MilliCRSP13D_ACT_No_NA_HF$prepostreturn, sort.group = "decreasing", cum.per
 
 ########################################################################################################################################################################
 ##NOV17 modification
+library(dplyr)
+library(tidyverse)
+library(data.table)
+library(ggplot2)
+
 sample<-subset(MilliCRSP13D_ACT,select=c(PERMNO,DATE,RET))
 sample$RET<-as.numeric((sample$RET))
 sample$DATE<-as.numeric((sample$DATE))
@@ -349,6 +354,553 @@ colnames(plotsample)[1] = "average buy and hold abnormal return"
 ggplot(data=plotsample, aes(x=order, y=`average buy and hold abnormal return`, group=1)) +
   geom_line()+
   geom_point()
+
+
+#####################################################################
+#####################################################################
+#NOV 23 11:58PM BDAY!
+#####################################################################
+#NOW DO THE SAME WITH ORDER IMBALANCE by trade
+#load the data SetofDataBeforeBuyHoldReturn
+library(dplyr)
+library(tidyverse)
+library(data.table)
+library(ggplot2)
+
+sample<-subset(MilliCRSP13D_ACT,select=c(PERMNO,DATE,mroibtrd))
+sample$DATE<-as.numeric((sample$DATE))
+sample$mroibtrd<-as.numeric((sample$mroibtrd))
+for(i in 14:-14) {
+  sample<-sample[, paste0("dm",i) := shift(mroibtrd, i)]
+}
+
+for(i in -14:14) {
+  sample[[paste0("cmroibtrd",i)]] <- rowSums(sample[, 4:(i+18)], na.rm = TRUE)
+}
+
+sample<-subset(sample,select = -c(4:32))
+head(sample)
+#save sample
+#rm(MilliCRSP13D_ACT_onlyNA,MilliCRSP13D_ACT, MilliCRSP13D_ACT_No_NA_HF, MilliCRSP13D_ACT_No_NA, i)
+
+#load data SetofDataBeforeBuyHoldReturn" FIRST and then "sample after cut 33 columns mroibtrd(ready to merge and plot)"
+library(dplyr)
+library(tidyverse)
+library(data.table)
+library(ggplot2)
+rm(MilliCRSP13D_ACT,MilliCRSP13D_ACT_onlyNA, MilliCRSP13D_ACT_No_NA_HF)
+setDT(MilliCRSP13D_ACT_No_NA)
+setDT(sample)
+MilliCRSP13D_ACT_No_NA$mroibtrd<-as.numeric(MilliCRSP13D_ACT_No_NA$mroibtrd)
+MilliCRSP13D_ACT_No_NA<-MilliCRSP13D_ACT_No_NA%>%
+  drop_na(mroibtrd)
+
+head(sample)
+
+MilliCRSP13D_ACT_No_NA[sample, on = .(PERMNO,DATE), names(sample)[4:32] := mget(paste0("i.", names(sample)[4:32]))]
+head(MilliCRSP13D_ACT_No_NA)
+rm(sample)
+
+#######################try with hedge funds only######################
+rm(MilliCRSP13D_ACT,MilliCRSP13D_ACT_onlyNA, MilliCRSP13D_ACT_No_NA)
+setDT(MilliCRSP13D_ACT_No_NA_HF)
+setDT(sample)
+MilliCRSP13D_ACT_No_NA_HF$mroibtrd<-as.numeric(MilliCRSP13D_ACT_No_NA_HF$mroibtrd)
+MilliCRSP13D_ACT_No_NA_HF<-MilliCRSP13D_ACT_No_NA_HF%>%
+  drop_na(mroibtrd)
+
+MilliCRSP13D_ACT_No_NA_HF[sample, on = .(PERMNO,DATE), names(sample)[4:32] := mget(paste0("i.", names(sample)[4:32]))]
+head(MilliCRSP13D_ACT_No_NA_HF)
+
+rm(sample)
+#####################################################################
+
+####PLOT####
+#plotsample<-MilliCRSP13D_ACT_No_NA[,24:52]
+plotsample<-MilliCRSP13D_ACT_No_NA_HF[,24:52]
+head(plotsample)
+plotsample<-colMeans(plotsample) 
+plotsample<-data.table(plotsample)
+plotsample<-plotsample%>%
+  mutate(order=-14:14)
+head(plotsample)
+colnames(plotsample)[1] = "average cumulative retail order imbalance by trade"
+
+ggplot(data=plotsample, aes(x=order, y=`average cumulative retail order imbalance by trade`, group=1)) +
+  geom_line()+
+  geom_point()
+
+################################################################################################################################
+################################################################################################################################
+################################################################################################################################
+################################################################################################################################
+################################################################################################################################
+################################################################################################################################
+################################################################################################################################
+#do the same with retail order imbalance by volume
+library(dplyr)
+library(tidyverse)
+library(data.table)
+library(ggplot2)
+head(MilliCRSP13D_ACT)
+sample<-subset(MilliCRSP13D_ACT,select=c(PERMNO,DATE,mroibvol))
+sample$DATE<-as.numeric((sample$DATE))
+sample$mroibvol<-as.numeric((sample$mroibvol))
+for(i in 14:-14) {
+  sample<-sample[, paste0("dm",i) := shift(mroibvol, i)]
+}
+
+for(i in -14:14) {
+  sample[[paste0("cmroibtrd",i)]] <- rowSums(sample[, 4:(i+18)], na.rm = TRUE)
+}
+
+sample<-subset(sample,select = -c(4:32))
+
+head(sample)
+#save sample
+#rm(MilliCRSP13D_ACT_onlyNA,MilliCRSP13D_ACT, MilliCRSP13D_ACT_No_NA_HF, MilliCRSP13D_ACT_No_NA, i)
+#load data SetofDataBeforeBuyHoldReturn" FIRST and then "sample after cut 32 columns mroibvol(ready to merge and plot)"
+library(dplyr)
+library(tidyverse)
+library(data.table)
+library(ggplot2)
+#######################try with all funds######################
+rm(MilliCRSP13D_ACT,MilliCRSP13D_ACT_onlyNA, MilliCRSP13D_ACT_No_NA_HF)
+setDT(MilliCRSP13D_ACT_No_NA)
+setDT(sample)
+MilliCRSP13D_ACT_No_NA$mroibvol<-as.numeric(MilliCRSP13D_ACT_No_NA$mroibvol)
+MilliCRSP13D_ACT_No_NA<-MilliCRSP13D_ACT_No_NA%>%
+  drop_na(mroibvol)
+
+head(sample)
+
+MilliCRSP13D_ACT_No_NA[sample, on = .(PERMNO,DATE), names(sample)[4:32] := mget(paste0("i.", names(sample)[4:32]))]
+head(MilliCRSP13D_ACT_No_NA)
+rm(sample)
+
+#######################try with hedge funds only######################
+rm(MilliCRSP13D_ACT,MilliCRSP13D_ACT_onlyNA, MilliCRSP13D_ACT_No_NA)
+setDT(MilliCRSP13D_ACT_No_NA_HF)
+setDT(sample)
+MilliCRSP13D_ACT_No_NA_HF$mroibvol<-as.numeric(MilliCRSP13D_ACT_No_NA_HF$mroibvol)
+MilliCRSP13D_ACT_No_NA_HF<-MilliCRSP13D_ACT_No_NA_HF%>%
+  drop_na(mroibvol)
+
+MilliCRSP13D_ACT_No_NA_HF[sample, on = .(PERMNO,DATE), names(sample)[4:32] := mget(paste0("i.", names(sample)[4:32]))]
+head(MilliCRSP13D_ACT_No_NA_HF)
+
+rm(sample)
+#####################################################################
+
+####PLOT####
+plotsample<-MilliCRSP13D_ACT_No_NA[,24:52]
+plotsample<-MilliCRSP13D_ACT_No_NA_HF[,24:52]
+head(plotsample)
+plotsample<-colMeans(plotsample) 
+plotsample<-data.table(plotsample)
+plotsample<-plotsample%>%
+  mutate(order=-14:14)
+head(plotsample)
+colnames(plotsample)[1] = "average cumulative retail order imbalance by volume"
+
+ggplot(data=plotsample, aes(x=order, y=`average cumulative retail order imbalance by volume`, group=1)) +
+  geom_line()+
+  geom_point()
+
+
+################################################################################################################################
+################################################################################################################################
+################################################################################################################################
+################################################################################################################################
+################################################################################################################################
+################################################################################################################################
+################################################################################################################################
+#do the same with share turnover
+library(dplyr)
+library(tidyverse)
+library(data.table)
+library(ggplot2)
+library(zoo)
+#load "SetofDataBeforeBuyHoldReturn"
+#load additionTAQ file
+AdditionTAQ<-fread("C:/Users/user/Desktop/HedgeFund_Retail_GitDeskTop/AdditionTAQ.csv")
+MilliCRSPLINK<-fread("C:/Users/user/Desktop/WhaleBJZZ/MilliCRSPLink 10-21.csv")
+
+head(MilliCRSPLINK)
+head(AdditionTAQ)
+head(MilliCRSP13D_ACT)
+sample<-subset(MilliCRSP13D_ACT,select=c(PERMNO,DATE,TICKER,PRC,CUSIP,MarketCap))
+head(sample)
+
+#GET shares outstanding back
+sample<-sample%>%
+  group_by(PERMNO)%>%
+  mutate(SHROUT=MarketCap/PRC)
+
+#######################match CRSP and Milli via MilliCRSPLINK########################
+#merge Milli with MilliCRSPLINK via SYM_ROOT and date
+colnames(MilliCRSPLINK) <- c('SYM_ROOT', 'DATE', 'SYM_SUFFIX ', 'PERMNO', 'CUSIP', 'NCUSIP', 'match_lvl' )
+MilliCRSPLINK<-subset(MilliCRSPLINK,select = c(SYM_ROOT,DATE,PERMNO,CUSIP))
+
+head(MilliCRSPLINK)
+#switch to data table merge later.
+setDT(AdditionTAQ)
+setDT(MilliCRSPLINK)
+AdditionTAQ[MilliCRSPLINK, on = .(SYM_ROOT,DATE), `:=` (PERMNO = i.PERMNO, CUSIP = i.CUSIP)]
+AdditionTAQ<-subset(AdditionTAQ,select = c(DATE, PERMNO, CUSIP,total_vol,total_vol_retail,total_vol_Inst20k))
+
+#match CRSP and Milli via PERMNO
+setDT(sample)
+setDT(AdditionTAQ)
+sample[AdditionTAQ, on = .(DATE,PERMNO,CUSIP), `:=` (total_vol = total_vol, total_vol_retail = i.total_vol_retail, total_vol_Inst20k = i.total_vol_Inst20k)]
+
+#save data at this point. saved as begin share turnover
+library(dplyr)
+library(tidyverse)
+library(data.table)
+library(ggplot2)
+library(zoo)
+rm(AdditionTAQ,MilliCRSP13D_ACT_No_NA,MilliCRSPLINK,MilliCRSP13D_ACT_onlyNA,MilliCRSP13D_ACT_No_NA_HF)
+
+#get share turnover
+head(sample)
+sample<-sample%>%
+  mutate(SHROUT=1000*SHROUT)%>%
+  group_by(PERMNO)%>%
+  mutate(SHRTO=total_vol/SHROUT)
+
+#get average shareturnover -220~-20
+sample<-sample%>%
+  group_by(PERMNO)%>%
+  mutate(avgSHRTO=rollapplyr(SHRTO,list(-(220:20)),mean,fill=NA))
+#this takes forever. save as sampleforturnover
+#load sampleforturnvoer and beginshareturnover
+
+head(sample)
+sample<-sample%>%
+  drop_na(avgSHRTO)
+
+sample<-sample%>%
+  mutate(excesSHRTO=(SHRTO-avgSHRTO)*100)
+head(sample)
+
+sample2<-subset(sample,select = c(PERMNO,DATE,TICKER,excesSHRTO))
+sample2$DATE<-as.numeric((sample2$DATE))
+sample2$excesSHRTO<-as.numeric((sample$excesSHRTO))
+head(sample2)
+
+setDT(sample2)
+for(i in 14:-14) {
+  sample2<-sample2[, paste0("dm",i) := shift(excesSHRTO, i)]
+}
+head(sample2)
+
+#load begin data shareturnover
+rm(MilliCRSP13D_ACT,MilliCRSP13D_ACT_onlyNA, MilliCRSP13D_ACT_No_NA,sample,AdditionTAQ,MilliCRSPLINK)
+
+#######################try with hedge funds only######################
+rm(MilliCRSP13D_ACT,MilliCRSP13D_ACT_onlyNA, MilliCRSP13D_ACT_No_NA)
+setDT(MilliCRSP13D_ACT_No_NA_HF)
+setDT(sample2)
+head(MilliCRSP13D_ACT_No_NA_HF)
+MilliCRSP13D_ACT_No_NA_HF<-subset(MilliCRSP13D_ACT_No_NA_HF,select = c(PERMNO,DATE))
+MilliCRSP13D_ACT_No_NA_HF$DATE<-as.numeric(MilliCRSP13D_ACT_No_NA_HF$DATE)
+MilliCRSP13D_ACT_No_NA_HF$PERMNO<-as.numeric(MilliCRSP13D_ACT_No_NA_HF$PERMNO)
+head(sample2)
+
+MilliCRSP13D_ACT_No_NA_HF[sample2, on = .(PERMNO,DATE), names(sample2)[5:33] := mget(paste0("i.", names(sample2)[5:33]))]
+head(MilliCRSP13D_ACT_No_NA_HF)
+
+rm(sample2)
+#####################################################################
+
+####PLOT####
+plotsample<-MilliCRSP13D_ACT_No_NA_HF[,3:31]
+head(plotsample)
+plotsample<-colMeans(plotsample,na.rm = TRUE) 
+plotsample<-data.table(plotsample)
+plotsample<-plotsample%>%
+  mutate(order=-14:14)
+head(plotsample)
+colnames(plotsample)[1] = "average excess shareturnover(in %)"
+
+ggplot(data=plotsample, aes(x=order, y=`average excess shareturnover(in %)`, group=1)) +
+  geom_line()+
+  geom_point()
+
+
+################################################################################################################################
+################################################################################################################################
+#do the same with retail share turnover
+library(dplyr)
+library(tidyverse)
+library(data.table)
+library(ggplot2)
+library(zoo)
+
+#load data beginshareturnover and sampleforturnover
+rm(AdditionTAQ,MilliCRSP13D_ACT_No_NA,MilliCRSPLINK,MilliCRSP13D_ACT_onlyNA)
+#get share turnover
+head(sample)
+sample<-sample%>%
+  mutate(SHROUT=1000*SHROUT)%>%
+  group_by(PERMNO)%>%
+  mutate(RETSHRTO=total_vol_retail/SHROUT)
+
+#get average shareturnover -220~-20
+sample<-sample%>%
+  group_by(PERMNO)%>%
+  mutate(avgRETSHRTO=rollapplyr(RETSHRTO,list(-(220:20)),mean,fill=NA))
+#this takes forever. save as sampleforturnover
+#load sampleforturnvoer and beginshareturnover
+
+head(sample)
+sample<-sample%>%
+  drop_na(avgRETSHRTO)
+
+sample<-sample%>%
+  mutate(excesRETSHRTO=(RETSHRTO-avgRETSHRTO)*100)
+head(sample)
+
+sample2<-subset(sample,select = c(PERMNO,DATE,TICKER,excesRETSHRTO))
+sample2$DATE<-as.numeric((sample2$DATE))
+sample2$excesRETSHRTO<-as.numeric((sample$excesRETSHRTO))
+head(sample2)
+
+setDT(sample2)
+for(i in 14:-14) {
+  sample2<-sample2[, paste0("dm",i) := shift(excesRETSHRTO, i)]
+}
+head(sample2)
+
+#load begin data shareturnover
+rm(MilliCRSP13D_ACT,MilliCRSP13D_ACT_onlyNA, MilliCRSP13D_ACT_No_NA,sample,AdditionTAQ,MilliCRSPLINK)
+
+#######################try with hedge funds only######################
+rm(MilliCRSP13D_ACT,MilliCRSP13D_ACT_onlyNA, MilliCRSP13D_ACT_No_NA)
+setDT(MilliCRSP13D_ACT_No_NA_HF)
+setDT(sample2)
+head(MilliCRSP13D_ACT_No_NA_HF)
+MilliCRSP13D_ACT_No_NA_HF<-subset(MilliCRSP13D_ACT_No_NA_HF,select = c(PERMNO,DATE))
+MilliCRSP13D_ACT_No_NA_HF$DATE<-as.numeric(MilliCRSP13D_ACT_No_NA_HF$DATE)
+MilliCRSP13D_ACT_No_NA_HF$PERMNO<-as.numeric(MilliCRSP13D_ACT_No_NA_HF$PERMNO)
+head(sample2)
+
+MilliCRSP13D_ACT_No_NA_HF[sample2, on = .(PERMNO,DATE), names(sample2)[5:33] := mget(paste0("i.", names(sample2)[5:33]))]
+head(MilliCRSP13D_ACT_No_NA_HF)
+
+rm(sample2)
+#####################################################################
+
+####PLOT####
+plotsample<-MilliCRSP13D_ACT_No_NA_HF[,3:31]
+head(plotsample)
+plotsample<-colMeans(plotsample,na.rm = TRUE) 
+plotsample<-data.table(plotsample)
+plotsample<-plotsample%>%
+  mutate(order=-14:14)
+head(plotsample)
+colnames(plotsample)[1] = "average excess retail shareturnover(in %)"
+
+ggplot(data=plotsample, aes(x=order, y=`average excess retail shareturnover(in %)`, group=1)) +
+  geom_line()+
+  geom_point()
+########################################################################################################################
+########################################################################################################################
+
+################################################################################################################################
+################################################################################################################################
+#do the same with 20k institution share turnover
+library(dplyr)
+library(tidyverse)
+library(data.table)
+library(ggplot2)
+library(zoo)
+
+#load data beginshareturnover 
+rm(AdditionTAQ,MilliCRSP13D_ACT_No_NA,MilliCRSPLINK,MilliCRSP13D_ACT_onlyNA)
+#get share turnover
+head(sample)
+sample<-sample%>%
+  mutate(SHROUT=1000*SHROUT)%>%
+  group_by(PERMNO)%>%
+  mutate(TKSHRTO=total_vol_Inst20k/SHROUT)
+
+#get average shareturnover -220~-20
+sample<-sample%>%
+  group_by(PERMNO)%>%
+  mutate(avgTKSHRTO=rollapplyr(TKSHRTO,list(-(220:20)),mean,fill=NA))
+#this takes forever. save as sampleforturnover
+#load sampleforturnvoer and beginshareturnover
+
+head(sample)
+sample<-sample%>%
+  drop_na(avgTKSHRTO)
+
+sample<-sample%>%
+  mutate(excesTKSHRTO=(TKSHRTO-avgTKSHRTO)*100)
+head(sample)
+
+sample2<-subset(sample,select = c(PERMNO,DATE,TICKER,excesTKSHRTO))
+sample2$DATE<-as.numeric((sample2$DATE))
+sample2$excesRETSHRTO<-as.numeric((sample$excesTKSHRTO))
+head(sample2)
+
+setDT(sample2)
+for(i in 14:-14) {
+  sample2<-sample2[, paste0("dm",i) := shift(excesTKSHRTO, i)]
+}
+head(sample2)
+
+#load begin data shareturnover
+rm(MilliCRSP13D_ACT,MilliCRSP13D_ACT_onlyNA, MilliCRSP13D_ACT_No_NA,sample,AdditionTAQ,MilliCRSPLINK)
+
+#######################try with hedge funds only######################
+rm(MilliCRSP13D_ACT,MilliCRSP13D_ACT_onlyNA, MilliCRSP13D_ACT_No_NA)
+setDT(MilliCRSP13D_ACT_No_NA_HF)
+setDT(sample2)
+head(MilliCRSP13D_ACT_No_NA_HF)
+MilliCRSP13D_ACT_No_NA_HF<-subset(MilliCRSP13D_ACT_No_NA_HF,select = c(PERMNO,DATE))
+MilliCRSP13D_ACT_No_NA_HF$DATE<-as.numeric(MilliCRSP13D_ACT_No_NA_HF$DATE)
+MilliCRSP13D_ACT_No_NA_HF$PERMNO<-as.numeric(MilliCRSP13D_ACT_No_NA_HF$PERMNO)
+head(sample2)
+
+MilliCRSP13D_ACT_No_NA_HF[sample2, on = .(PERMNO,DATE), names(sample2)[5:33] := mget(paste0("i.", names(sample2)[5:33]))]
+head(MilliCRSP13D_ACT_No_NA_HF)
+
+rm(sample2)
+#####################################################################
+
+####PLOT####
+plotsample<-MilliCRSP13D_ACT_No_NA_HF[,3:31]
+head(plotsample)
+plotsample<-colMeans(plotsample,na.rm = TRUE) 
+plotsample<-data.table(plotsample)
+plotsample<-plotsample%>%
+  mutate(order=-14:14)
+head(plotsample)
+colnames(plotsample)[1] = "average excess 20k institutional shareturnover(in %)"
+
+ggplot(data=plotsample, aes(x=order, y=`average excess 20k institutional shareturnover(in %)`, group=1)) +
+  geom_line()+
+  geom_point()
+################################################################################################################################
+################################################################################################################################
+
+
+
+################################################################################################################################
+################################################################################################################################
+################################################################################################################################
+################################################################################################################################
+################################################################################################################################
+################################################################################################################################
+################################################################################################################################
+#do the same with retail order imbalance by volume but this time with no cumulative
+library(dplyr)
+library(tidyverse)
+library(data.table)
+library(ggplot2)
+head(MilliCRSP13D_ACT)
+sample<-subset(MilliCRSP13D_ACT,select=c(PERMNO,DATE,mroibvol))
+sample$DATE<-as.numeric((sample$DATE))
+sample$mroibvol<-as.numeric((sample$mroibvol))
+for(i in 14:-14) {
+  sample<-sample[, paste0("dm",i) := shift(mroibvol, i)]
+}
+
+# for(i in -14:14) {
+#   sample[[paste0("cmroibtrd",i)]] <- rowSums(sample[, 4:(i+18)], na.rm = TRUE)
+# }
+
+# sample<-subset(sample,select = -c(4:32))
+
+head(sample)
+#save sample
+#rm(MilliCRSP13D_ACT_onlyNA,MilliCRSP13D_ACT, MilliCRSP13D_ACT_No_NA_HF, MilliCRSP13D_ACT_No_NA, i)
+#load data SetofDataBeforeBuyHoldReturn" FIRST and then "sample after cut 32 columns mroibvol(ready to merge and plot)"
+library(dplyr)
+library(tidyverse)
+library(data.table)
+library(ggplot2)
+#######################try with all funds######################
+# rm(MilliCRSP13D_ACT,MilliCRSP13D_ACT_onlyNA, MilliCRSP13D_ACT_No_NA_HF)
+# setDT(MilliCRSP13D_ACT_No_NA)
+# setDT(sample)
+# MilliCRSP13D_ACT_No_NA$mroibvol<-as.numeric(MilliCRSP13D_ACT_No_NA$mroibvol)
+# MilliCRSP13D_ACT_No_NA<-MilliCRSP13D_ACT_No_NA%>%
+#   drop_na(mroibvol)
+# 
+# head(sample)
+# 
+# MilliCRSP13D_ACT_No_NA[sample, on = .(PERMNO,DATE), names(sample)[4:32] := mget(paste0("i.", names(sample)[4:32]))]
+# head(MilliCRSP13D_ACT_No_NA)
+# rm(sample)
+
+#######################try with hedge funds only######################
+rm(MilliCRSP13D_ACT,MilliCRSP13D_ACT_onlyNA, MilliCRSP13D_ACT_No_NA)
+setDT(MilliCRSP13D_ACT_No_NA_HF)
+setDT(sample)
+MilliCRSP13D_ACT_No_NA_HF$mroibvol<-as.numeric(MilliCRSP13D_ACT_No_NA_HF$mroibvol)
+MilliCRSP13D_ACT_No_NA_HF<-MilliCRSP13D_ACT_No_NA_HF%>%
+  drop_na(mroibvol)
+
+MilliCRSP13D_ACT_No_NA_HF[sample, on = .(PERMNO,DATE), names(sample)[4:32] := mget(paste0("i.", names(sample)[4:32]))]
+head(MilliCRSP13D_ACT_No_NA_HF)
+
+rm(sample)
+#####################################################################
+
+####PLOT####
+plotsample<-MilliCRSP13D_ACT_No_NA[,24:52]
+plotsample<-MilliCRSP13D_ACT_No_NA_HF[,24:52]
+head(plotsample)
+plotsample<-colMeans(plotsample) 
+plotsample<-data.table(plotsample)
+plotsample<-plotsample%>%
+  mutate(order=-14:14)
+head(plotsample)
+colnames(plotsample)[1] = "average cumulative retail order imbalance by volume"
+
+ggplot(data=plotsample, aes(x=order, y=`average cumulative retail order imbalance by volume`, group=1)) +
+  geom_line()+
+  geom_point()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
