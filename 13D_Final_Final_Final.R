@@ -809,33 +809,7 @@ for(i in 14:-14) {
   sample<-sample[, paste0("dm",i) := shift(mroibvol, i)]
 }
 
-# for(i in -14:14) {
-#   sample[[paste0("cmroibtrd",i)]] <- rowSums(sample[, 4:(i+18)], na.rm = TRUE)
-# }
-
-# sample<-subset(sample,select = -c(4:32))
-
 head(sample)
-#save sample
-#rm(MilliCRSP13D_ACT_onlyNA,MilliCRSP13D_ACT, MilliCRSP13D_ACT_No_NA_HF, MilliCRSP13D_ACT_No_NA, i)
-#load data SetofDataBeforeBuyHoldReturn" FIRST and then "sample after cut 32 columns mroibvol(ready to merge and plot)"
-library(dplyr)
-library(tidyverse)
-library(data.table)
-library(ggplot2)
-#######################try with all funds######################
-# rm(MilliCRSP13D_ACT,MilliCRSP13D_ACT_onlyNA, MilliCRSP13D_ACT_No_NA_HF)
-# setDT(MilliCRSP13D_ACT_No_NA)
-# setDT(sample)
-# MilliCRSP13D_ACT_No_NA$mroibvol<-as.numeric(MilliCRSP13D_ACT_No_NA$mroibvol)
-# MilliCRSP13D_ACT_No_NA<-MilliCRSP13D_ACT_No_NA%>%
-#   drop_na(mroibvol)
-# 
-# head(sample)
-# 
-# MilliCRSP13D_ACT_No_NA[sample, on = .(PERMNO,DATE), names(sample)[4:32] := mget(paste0("i.", names(sample)[4:32]))]
-# head(MilliCRSP13D_ACT_No_NA)
-# rm(sample)
 
 #######################try with hedge funds only######################
 rm(MilliCRSP13D_ACT,MilliCRSP13D_ACT_onlyNA, MilliCRSP13D_ACT_No_NA)
@@ -852,7 +826,6 @@ rm(sample)
 #####################################################################
 
 ####PLOT####
-plotsample<-MilliCRSP13D_ACT_No_NA[,24:52]
 plotsample<-MilliCRSP13D_ACT_No_NA_HF[,24:52]
 head(plotsample)
 plotsample<-colMeans(plotsample) 
@@ -860,31 +833,262 @@ plotsample<-data.table(plotsample)
 plotsample<-plotsample%>%
   mutate(order=-14:14)
 head(plotsample)
-colnames(plotsample)[1] = "average cumulative retail order imbalance by volume"
+colnames(plotsample)[1] = "average retail order imbalance by volume"
 
-ggplot(data=plotsample, aes(x=order, y=`average cumulative retail order imbalance by volume`, group=1)) +
+ggplot(data=plotsample, aes(x=order, y=`average retail order imbalance by volume`, group=1)) +
   geom_line()+
-  geom_point()
+  geom_point()+ggtitle("average retail order imbalance (BJZZ) by volume (non-cumulative)")
+
+################################################################################################################################
+################################################################################################################################
+################################################################################################################################
+################################################################################################################################
+################################################################################################################################
+################################################################################################################################
+################################################################################################################################
+#do the same with plain retail order buy and sel by volume
+library(dplyr)
+library(tidyverse)
+library(data.table)
+library(ggplot2)
+library(zoo)
+#load "SetofDataBeforeBuyHoldReturn"
+#load additionTAQ file
+AdditionTAQ<-fread("C:/Users/user/Desktop/HedgeFund_Retail_GitDeskTop/AdditionTAQ2.csv")
+MilliCRSPLINK<-fread("C:/Users/user/Desktop/WhaleBJZZ/MilliCRSPLink 10-21.csv")
+
+head(MilliCRSPLINK)
+head(AdditionTAQ)
+head(MilliCRSP13D_ACT)
+sample<-subset(MilliCRSP13D_ACT,select=c(PERMNO,DATE,TICKER,PRC,CUSIP))
+head(sample)
+
+#######################match CRSP and Milli via MilliCRSPLINK########################
+#merge Milli with MilliCRSPLINK via SYM_ROOT and date
+colnames(MilliCRSPLINK) <- c('SYM_ROOT', 'DATE', 'SYM_SUFFIX ', 'PERMNO', 'CUSIP', 'NCUSIP', 'match_lvl' )
+MilliCRSPLINK<-subset(MilliCRSPLINK,select = c(SYM_ROOT,DATE,PERMNO,CUSIP))
+
+head(MilliCRSPLINK)
+#switch to data table merge later.
+setDT(AdditionTAQ)
+setDT(MilliCRSPLINK)
+AdditionTAQ[MilliCRSPLINK, on = .(SYM_ROOT,DATE), `:=` (PERMNO = i.PERMNO, CUSIP = i.CUSIP)]
+head(AdditionTAQ)
+AdditionTAQ<-subset(AdditionTAQ,select = c(DATE, PERMNO, CUSIP,BuyVol_Retail,SellVol_Retail))
+
+#match CRSP and Milli via PERMNO
+setDT(sample)
+setDT(AdditionTAQ)
+sample[AdditionTAQ, on = .(DATE,PERMNO,CUSIP), `:=` (BuyVol_Retail  = i.BuyVol_Retail , SellVol_Retail = i.SellVol_Retail)]
+head(sample)
+
+rm(AdditionTAQ,MilliCRSP13D_ACT_No_NA,MilliCRSPLINK,MilliCRSP13D_ACT_onlyNA)
+###################################################################################
+###################################################################################
+###################################################################################
+setDT(sample)
+for(i in 14:-14) {
+  sample<-sample[, paste0("dm",i) := shift(BuyVol_Retail , i)]
+}
+head(sample)
+
+#######################try with hedge funds only######################
+setDT(MilliCRSP13D_ACT_No_NA_HF)
+setDT(sample)
+head(MilliCRSP13D_ACT_No_NA_HF)
+MilliCRSP13D_ACT_No_NA_HF<-subset(MilliCRSP13D_ACT_No_NA_HF,select = c(PERMNO,DATE))
+MilliCRSP13D_ACT_No_NA_HF$DATE<-as.numeric(MilliCRSP13D_ACT_No_NA_HF$DATE)
+MilliCRSP13D_ACT_No_NA_HF$PERMNO<-as.numeric(MilliCRSP13D_ACT_No_NA_HF$PERMNO)
+head(sample)
+
+MilliCRSP13D_ACT_No_NA_HF[sample, on = .(PERMNO,DATE), names(sample)[8:36] := mget(paste0("i.", names(sample)[8:36]))]
+head(MilliCRSP13D_ACT_No_NA_HF)
+
+#####################################################################
+
+####PLOT####
+plotsample<-MilliCRSP13D_ACT_No_NA_HF[,3:31]
+head(plotsample)
+plotsample<-colMeans(plotsample,na.rm = TRUE) 
+plotsample<-data.table(plotsample)
+plotsample<-plotsample%>%
+  mutate(order=-14:14)
+head(plotsample)
+colnames(plotsample)[1] = "marketable retail buy order"
+
+ggplot(data=plotsample, aes(x=order, y=`marketable retail buy order`, group=1)) +
+  geom_line()+
+  geom_point()+ggtitle("Raw marketable retail buy order")
+
+###################################################################################
+###################################################################################
+###################################################################################
+#do it with sell order
+head(sample)
+sample<-sample[,1:7]
+MilliCRSP13D_ACT_No_NA_HF<-MilliCRSP13D_ACT_No_NA_HF[,1:2]
+setDT(sample)
+for(i in 14:-14) {
+  sample<-sample[, paste0("dm",i) := shift(SellVol_Retail , i)]
+}
+head(sample)
+
+#######################try with hedge funds only######################
+setDT(MilliCRSP13D_ACT_No_NA_HF)
+setDT(sample)
+MilliCRSP13D_ACT_No_NA_HF$DATE<-as.numeric(MilliCRSP13D_ACT_No_NA_HF$DATE)
+MilliCRSP13D_ACT_No_NA_HF$PERMNO<-as.numeric(MilliCRSP13D_ACT_No_NA_HF$PERMNO)
+head(sample)
+
+MilliCRSP13D_ACT_No_NA_HF[sample, on = .(PERMNO,DATE), names(sample)[8:36] := mget(paste0("i.", names(sample)[8:36]))]
+head(MilliCRSP13D_ACT_No_NA_HF)
+
+#####################################################################
+
+####PLOT####
+plotsample<-MilliCRSP13D_ACT_No_NA_HF[,3:31]
+head(plotsample)
+plotsample<-colMeans(plotsample,na.rm = TRUE) 
+plotsample<-data.table(plotsample)
+plotsample<-plotsample%>%
+  mutate(order=-14:14)
+head(plotsample)
+colnames(plotsample)[1] = "marketable retail sell order"
+
+ggplot(data=plotsample, aes(x=order, y=`marketable retail sell order`, group=1)) +
+  geom_line()+
+  geom_point()+ggtitle("Raw marketable retail sell order")
+
+###################################################################################
+###################################################################################
+###################################################################################
+#hmm recalculate bzjj mroib
+head(sample)
+sample<-sample[,1:7]
+MilliCRSP13D_ACT_No_NA_HF<-MilliCRSP13D_ACT_No_NA_HF[,1:2]
+
+#recalculate mroib
+sample<-sample%>%
+  group_by(PERMNO)%>%
+  mutate(mroibvol=(BuyVol_Retail-SellVol_Retail)/(BuyVol_Retail+SellVol_Retail))
+
+head(sample)
+
+setDT(sample)
+for(i in 14:-14) {
+  sample<-sample[, paste0("dm",i) := shift(mroibvol , i)]
+}
+head(sample)
+
+#######################try with hedge funds only######################
+setDT(MilliCRSP13D_ACT_No_NA_HF)
+setDT(sample)
+MilliCRSP13D_ACT_No_NA_HF$DATE<-as.numeric(MilliCRSP13D_ACT_No_NA_HF$DATE)
+MilliCRSP13D_ACT_No_NA_HF$PERMNO<-as.numeric(MilliCRSP13D_ACT_No_NA_HF$PERMNO)
+head(sample)
+
+MilliCRSP13D_ACT_No_NA_HF[sample, on = .(PERMNO,DATE), names(sample)[9:37] := mget(paste0("i.", names(sample)[9:37]))]
+head(MilliCRSP13D_ACT_No_NA_HF)
+
+#####################################################################
+
+####PLOT####
+plotsample<-MilliCRSP13D_ACT_No_NA_HF[,3:31]
+head(plotsample)
+plotsample<-colMeans(plotsample,na.rm = TRUE) 
+plotsample<-data.table(plotsample)
+plotsample<-plotsample%>%
+  mutate(order=-14:14)
+head(plotsample)
+colnames(plotsample)[1] = "marketable retail order imbalance"
+
+ggplot(data=plotsample, aes(x=order, y=`marketable retail order imbalance`, group=1)) +
+  geom_line()+
+  geom_point()+ggtitle("marketable retail order imbalance recalculated (noncumulative)")
+
+###################################################################################
+###################################################################################
+###################################################################################
+
+#something is strange... comparing graphs, buy looks higher than sell.why negative?
+#different approach get average first and then make it order imbalance
+library(dplyr)
+library(tidyverse)
+library(data.table)
+library(ggplot2)
+library(zoo)
+sample<-sample[,1:7]
+sample_b<-sample
+MilliCRSP13D_ACT_No_NA_HF<-MilliCRSP13D_ACT_No_NA_HF[,1:2]
+head(sample)
+head(MilliCRSP13D_ACT_No_NA_HF)
+setDT(sample_b)
+for(i in 14:-14) {
+  sample_b<-sample_b[, paste0("dm",i) := shift(BuyVol_Retail , i)]
+}
+head(sample_b)
+
+sample<-sample[,1:7]
+sample_s<-sample
+setDT(sample_s)
+for(i in 14:-14) {
+  sample_s<-sample_s[, paste0("dm",i) := shift(SellVol_Retail , i)]
+}
+
+head(sample_b)
+head(sample_s)
+#######################make avg buy order ######################
+MilliCRSP13D_ACT_No_NA_HF$DATE<-as.numeric(MilliCRSP13D_ACT_No_NA_HF$DATE)
+MilliCRSP13D_ACT_No_NA_HF$PERMNO<-as.numeric(MilliCRSP13D_ACT_No_NA_HF$PERMNO)
+setDT(MilliCRSP13D_ACT_No_NA_HF)
+setDT(sample_b)
+head(sample_b)
+
+MilliCRSP13D_ACT_No_NA_HF[sample_b, on = .(PERMNO,DATE), names(sample_b)[8:36] := mget(paste0("i.", names(sample_b)[8:36]))]
+head(MilliCRSP13D_ACT_No_NA_HF)
+
+#####################################################################
+
+####average buy####
+plotsample_b<-MilliCRSP13D_ACT_No_NA_HF[,3:31]
+head(plotsample_b)
+plotsample_b<-colMeans(plotsample_b,na.rm = TRUE) 
+plotsample_b<-data.table(plotsample_b)
+plotsample_b<-plotsample_b%>%
+  mutate(order=-14:14)
+head(plotsample_b)
+colnames(plotsample_b)[1] = "avg_retail_buy"
+
+#######################make avg sell order ######################
+MilliCRSP13D_ACT_No_NA_HF<-MilliCRSP13D_ACT_No_NA_HF[,1:2]
+setDT(MilliCRSP13D_ACT_No_NA_HF)
+setDT(sample_s)
+
+head(sample_s)
+
+MilliCRSP13D_ACT_No_NA_HF[sample_s, on = .(PERMNO,DATE), names(sample_s)[8:36] := mget(paste0("i.", names(sample_s)[8:36]))]
+head(MilliCRSP13D_ACT_No_NA_HF)
+
+####average sell####
+plotsample_s<-MilliCRSP13D_ACT_No_NA_HF[,3:31]
+head(plotsample_s)
+plotsample_s<-colMeans(plotsample_s,na.rm = TRUE) 
+plotsample_s<-data.table(plotsample_s)
+plotsample_s<-plotsample_s%>%
+  mutate(order=-14:14)
+head(plotsample_s)
+colnames(plotsample_s)[1] = "avg_retail_sell"
+
+combine<-left_join(plotsample_b,plotsample_s,by='order')
+combine
+combine<-combine%>%
+  mutate(new_oib=(avg_retail_buy-avg_retail_sell)/((avg_retail_buy+avg_retail_sell)))
+combine
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+ggplot(data=combine, aes(x=order, y=`new_oib`, group=1)) +
+  geom_line()+
+  geom_point()+ggtitle("mroib calculated after aggregating buy and sell")
 
 
 
